@@ -1,0 +1,643 @@
+openapi: 3.0.3
+info:
+  title: 家計簿アプリ API
+  description: |-
+    レシートOCRと家計管理のためのREST API。
+    フロントエンド（React）が必要とするすべてのエンドポイントを定義する。
+  version: 1.1.0
+
+servers:
+  - url: http://localhost:8000
+    description: ローカル開発環境
+
+# デフォルトは認証なし。個別エンドポイントで上書きする。
+security: []
+
+tags:
+  - name: auth
+    description: 認証（ユーザー名のみ）
+  - name: health
+    description: 死活確認
+  - name: ocr
+    description: レシート画像のOCR解析
+  - name: receipts
+    description: レシートのCRUD操作
+  - name: summary
+    description: ダッシュボード用集計データ
+
+paths:
+  # ------------------------------------------------------------------ #
+  # Auth
+  # ------------------------------------------------------------------ #
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: ログイン（ユーザー名のみ）
+      operationId: login
+      description: |-
+        ユーザー名だけでログインする。パスワードは不要。
+        サーバーはユーザー名を登録し、以降のリクエストで使用するトークンを返す。
+        フロントエンドはトークンを localStorage に保存し、
+        POST /ocr・POST /receipts の Authorization ヘッダーに付与する。
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: ログイン成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/me:
+    get:
+      tags: [auth]
+      summary: ログイン中のユーザー情報を返す
+      operationId: getMe
+      description: |-
+        フロントエンドの初回ロード時にトークンの有効性を確認するために使用する。
+        無効なトークンの場合は 401 を返す。
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ------------------------------------------------------------------ #
+  # Health
+  # ------------------------------------------------------------------ #
+  /health:
+    get:
+      tags: [health]
+      summary: サーバーの死活確認
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: 正常稼働中
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  # ------------------------------------------------------------------ #
+  # OCR
+  # ------------------------------------------------------------------ #
+  /ocr:
+    post:
+      tags: [ocr]
+      summary: レシート画像を解析して商品と金額を返す
+      operationId: analyzeReceipt
+      description: |-
+        画像をアップロードするとOCRで文字認識を行い、
+        店舗名・日付・商品一覧・合計金額をJSONで返す。
+        返却値はそのままPOST /receipts のリクエストボディとして利用できる。
+        ログイン済みユーザーのみ利用可能（Authorizationヘッダー必須）。
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, username]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: レシート画像（JPEG / PNG / HEIC など）
+                username:
+                  type: string
+                  description: 実行ユーザーのユーザー名
+                  example: taro
+      responses:
+        '200':
+          description: OCR成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OcrResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ------------------------------------------------------------------ #
+  # Receipts
+  # ------------------------------------------------------------------ #
+  /receipts:
+    get:
+      tags: [receipts]
+      summary: レシート一覧を取得する
+      operationId: listReceipts
+      description: |-
+        登録済みのレシートを一覧で返す。
+        クエリパラメータで月・カテゴリ・キーワードを絞り込める。
+        - フロントエンドの「支出管理」画面で使用
+        - フロントエンドの「カレンダー」画面（月指定）で使用
+        - フロントエンドの「ダッシュボード」最近のレシート表示で使用
+      parameters:
+        - name: month
+          in: query
+          description: 対象月（YYYY-MM 形式）。指定なしは全期間。
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}$'
+            example: '2026-06'
+        - name: category
+          in: query
+          description: カテゴリで絞り込む。
+          schema:
+            $ref: '#/components/schemas/Category'
+        - name: q
+          in: query
+          description: 店舗名または商品名のキーワード検索（部分一致）。
+          schema:
+            type: string
+            example: スーパー
+        - name: limit
+          in: query
+          description: 取得件数の上限。
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 100
+        - name: offset
+          in: query
+          description: 取得開始位置（ページネーション用）。
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: 取得成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total_count]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Receipt'
+                  total_count:
+                    type: integer
+                    description: フィルター後の総件数（ページネーション用）
+                    example: 42
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    post:
+      tags: [receipts]
+      summary: レシートを登録する
+      operationId: createReceipt
+      description: |-
+        OCR結果を編集・確認後に保存するエンドポイント。
+        フロントエンドの「レシート読み取り」画面の「保存する」ボタンで呼び出される。
+        ログイン済みユーザーのみ利用可能（Authorizationヘッダー必須）。
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReceiptCreate'
+      responses:
+        '201':
+          description: 登録成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Receipt'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /receipts/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: レシートID
+        schema:
+          type: string
+          format: uuid
+          example: '550e8400-e29b-41d4-a716-446655440000'
+
+    get:
+      tags: [receipts]
+      summary: レシート1件を取得する
+      operationId: getReceipt
+      responses:
+        '200':
+          description: 取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Receipt'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [receipts]
+      summary: レシートを更新する
+      operationId: updateReceipt
+      description: |-
+        店舗名・日付・カテゴリ・商品一覧を編集して保存する。
+        フロントエンドの「支出管理」画面の編集機能で使用（今後実装予定）。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReceiptCreate'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Receipt'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    delete:
+      tags: [receipts]
+      summary: レシートを削除する
+      operationId: deleteReceipt
+      description: フロントエンドの「支出管理」画面のゴミ箱アイコンで呼び出される。
+      responses:
+        '204':
+          description: 削除成功（レスポンスボディなし）
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ------------------------------------------------------------------ #
+  # Summary（ダッシュボード用集計）
+  # ------------------------------------------------------------------ #
+  /summary:
+    get:
+      tags: [summary]
+      summary: 月別サマリーを取得する
+      operationId: getMonthlySummary
+      description: |-
+        ダッシュボード画面が必要とする集計データをまとめて返す。
+        - 今月の合計・件数・カテゴリ別内訳
+        - 先月の合計（先月比計算用）
+        - 直近N ヶ月の月別合計（棒グラフ用）
+      parameters:
+        - name: month
+          in: query
+          description: 集計基準月（YYYY-MM）。指定なしは当月。
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}$'
+            example: '2026-06'
+        - name: trend_months
+          in: query
+          description: 月別推移に含める月数。
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 24
+            default: 6
+      responses:
+        '200':
+          description: 取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonthlySummary'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+# ------------------------------------------------------------------ #
+# Components
+# ------------------------------------------------------------------ #
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: |-
+        POST /auth/login で取得したトークンを Bearer として付与する。
+        例: Authorization: Bearer <token>
+
+  schemas:
+    # ---- Auth ----
+    LoginRequest:
+      type: object
+      required: [username]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: ログインするユーザー名（パスワード不要）
+          example: taro
+
+    LoginResponse:
+      type: object
+      required: [user, token]
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        token:
+          type: string
+          description: 以降のリクエストで Authorization ヘッダーに付与するトークン
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+    User:
+      type: object
+      required: [user_id, username]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          description: ユーザーID（サーバーが採番）
+          example: '123e4567-e89b-12d3-a456-426614174000'
+        username:
+          type: string
+          description: ユーザー名
+          example: taro
+
+    # ---- 共通 ----
+    Category:
+      type: string
+      enum:
+        - 食費
+        - 外食
+        - 日用品
+        - 交通費
+        - 医療費
+        - 娯楽
+        - 衣類
+        - その他
+      example: 食費
+
+    ReceiptItem:
+      type: object
+      required: [name, price]
+      properties:
+        name:
+          type: string
+          description: 商品名
+          example: 牛乳
+        price:
+          type: integer
+          description: 金額（円）
+          minimum: 0
+          example: 198
+
+    # ---- Receipt ----
+    ReceiptCreate:
+      type: object
+      required: [username, store, date, items, category]
+      properties:
+        username:
+          type: string
+          description: 登録するユーザーのユーザー名（ログイン中ユーザーと一致すること）
+          example: taro
+        store:
+          type: string
+          description: 店舗名
+          example: スーパーXX
+        date:
+          type: string
+          format: date
+          description: 購入日（YYYY-MM-DD）
+          example: '2026-06-07'
+        items:
+          type: array
+          description: 購入商品一覧
+          items:
+            $ref: '#/components/schemas/ReceiptItem'
+          minItems: 0
+        category:
+          $ref: '#/components/schemas/Category'
+
+    Receipt:
+      allOf:
+        - $ref: '#/components/schemas/ReceiptCreate'
+        - type: object
+          required: [id, total, created_at]
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: レシートID（サーバーが採番）
+              example: '550e8400-e29b-41d4-a716-446655440000'
+            total:
+              type: integer
+              description: 合計金額（items[].price の合計をサーバーが計算）
+              example: 443
+            created_at:
+              type: string
+              format: date-time
+              description: 登録日時（ISO 8601）
+              example: '2026-06-07T10:30:00+09:00'
+
+    # ---- OCR ----
+    OcrResult:
+      type: object
+      required: [success, store, date, items, total, raw_lines]
+      properties:
+        success:
+          type: boolean
+          example: true
+        store:
+          type: string
+          description: OCRが推定した店舗名
+          example: スーパーXX
+        date:
+          type: string
+          format: date
+          description: OCRが推定した購入日
+          example: '2026-06-07'
+        items:
+          type: array
+          description: 認識した商品一覧
+          items:
+            $ref: '#/components/schemas/ReceiptItem'
+        total:
+          type: integer
+          description: 認識した合計金額
+          example: 443
+        raw_lines:
+          type: array
+          description: OCR生テキスト（デバッグ用）
+          items:
+            type: string
+          example: ['スーパーXX', '牛乳 ¥198', '食パン ¥245', '合計 ¥443']
+
+    # ---- Summary ----
+    CategoryTotal:
+      type: object
+      required: [category, total]
+      properties:
+        category:
+          $ref: '#/components/schemas/Category'
+        total:
+          type: integer
+          description: カテゴリ合計金額（円）
+          example: 12800
+
+    MonthlyTrend:
+      type: object
+      required: [month, label, total]
+      properties:
+        month:
+          type: string
+          description: 月（YYYY-MM）
+          example: '2026-06'
+        label:
+          type: string
+          description: '表示用ラベル（例: "6月"）'
+          example: '6月'
+        total:
+          type: integer
+          description: その月の支出合計（円）
+          example: 84500
+
+    MonthlySummary:
+      type: object
+      required: [this_month, last_month, trend]
+      properties:
+        this_month:
+          type: object
+          required: [month, total, count, by_category]
+          properties:
+            month:
+              type: string
+              description: 集計対象月（YYYY-MM）
+              example: '2026-06'
+            total:
+              type: integer
+              description: 今月の支出合計（円）
+              example: 84500
+            count:
+              type: integer
+              description: 今月のレシート件数
+              example: 23
+            by_category:
+              type: array
+              description: カテゴリ別内訳（円グラフ用）
+              items:
+                $ref: '#/components/schemas/CategoryTotal'
+        last_month:
+          type: object
+          required: [month, total, count]
+          properties:
+            month:
+              type: string
+              description: 先月（YYYY-MM）
+              example: '2026-05'
+            total:
+              type: integer
+              description: 先月の支出合計（円）
+              example: 75400
+            count:
+              type: integer
+              description: 先月のレシート件数
+              example: 19
+        trend:
+          type: array
+          description: 直近N ヶ月の月別支出（棒グラフ用）
+          items:
+            $ref: '#/components/schemas/MonthlyTrend'
+
+    # ---- エラー ----
+    ErrorResponse:
+      type: object
+      required: [detail]
+      properties:
+        detail:
+          type: string
+          description: エラーメッセージ
+          example: 指定されたIDのレシートが見つかりません
+
+    ValidationErrorResponse:
+      type: object
+      required: [detail]
+      properties:
+        detail:
+          type: array
+          items:
+            type: object
+            properties:
+              loc:
+                type: array
+                items:
+                  type: string
+                example: ['body', 'date']
+              msg:
+                type: string
+                example: 'invalid date format'
+              type:
+                type: string
+                example: 'value_error'
+
+  responses:
+    Unauthorized:
+      description: 未認証（トークンなし・無効）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            detail: 認証が必要です。ログインしてください。
+
+    BadRequest:
+      description: リクエストが不正（画像ファイル以外など）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: 指定されたリソースが存在しない
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    ValidationError:
+      description: バリデーションエラー（FastAPIのデフォルト形式）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+
+    InternalError:
+      description: サーバー内部エラー
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

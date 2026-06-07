@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Upload, Loader2, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { ocrReceipt } from '../lib/api';
 import { saveReceipt } from '../lib/storage';
+import { getUsername } from '../lib/auth';
 import { CATEGORIES } from '../types';
 import type { OcrResult, Category } from '../types';
 
@@ -23,6 +24,7 @@ export default function Scan() {
   const [editDate, setEditDate] = useState('');
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
+  const username = getUsername() ?? '';
 
   const handleFile = useCallback(async (file: File) => {
     if (!file.type.startsWith('image/')) {
@@ -33,7 +35,7 @@ export default function Scan() {
     setPreview(URL.createObjectURL(file));
     setStep('loading');
     try {
-      const res = await ocrReceipt(file);
+      const res = await ocrReceipt(file, username);
       setResult(res);
       setEditItems(res.items);
       setEditStore(res.store);
@@ -43,7 +45,7 @@ export default function Scan() {
       setError(e instanceof Error ? e.message : 'OCRに失敗しました');
       setStep('error');
     }
-  }, []);
+  }, [username]);
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -61,6 +63,7 @@ export default function Scan() {
       items: editItems,
       total,
       category,
+      username,
       createdAt: new Date().toISOString(),
     });
     setStep('done');
