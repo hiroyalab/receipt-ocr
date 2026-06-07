@@ -7,31 +7,52 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  categories Category[]
+  receipts   Receipt[]
+  expenses   Expense[]
+  budgets    Budget[]
+}
+
 model Category {
   id        String   @id @default(uuid())
-  name      String   @unique
+  userId    String
+  name      String
   color     String?
   icon      String?
   isDefault Boolean  @default(false)
   createdAt DateTime @default(now())
 
+  user     User      @relation(fields: [userId], references: [id])
   expenses Expense[]
   budgets  Budget[]
+
+  @@unique([userId, name])
 }
 
 model Receipt {
   id          String    @id @default(uuid())
+  userId      String
   imagePath   String
   ocrRawLines Json
   ocrStore    String?
   ocrDate     DateTime? @db.Date
   scannedAt   DateTime  @default(now())
 
+  user     User      @relation(fields: [userId], references: [id])
   expenses Expense[]
 }
 
 model Expense {
   id          String   @id @default(uuid())
+  userId      String
   receiptId   String?
   categoryId  String
   storeName   String?
@@ -41,6 +62,7 @@ model Expense {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  user     User          @relation(fields: [userId], references: [id])
   receipt  Receipt?      @relation(fields: [receiptId], references: [id])
   category Category      @relation(fields: [categoryId], references: [id])
   items    ExpenseItem[]
@@ -59,13 +81,15 @@ model ExpenseItem {
 
 model Budget {
   id         String   @id @default(uuid())
+  userId     String
   categoryId String
   yearMonth  String   // YYYY-MM
   amount     Int
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  user     User     @relation(fields: [userId], references: [id])
   category Category @relation(fields: [categoryId], references: [id])
 
-  @@unique([categoryId, yearMonth])
+  @@unique([userId, categoryId, yearMonth])
 }
