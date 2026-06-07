@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(uv add *)",
-      "Bash(uv remove *)"
+      "Bash(uv remove *)",
+      "Bash(npm create *)"
     ]
   }
 }
