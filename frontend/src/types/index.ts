@@ -5,6 +5,7 @@ export interface ReceiptItem {
 
 export interface Receipt {
   id: string;
+  username: string;
   store: string;
   date: string;
   items: ReceiptItem[];
