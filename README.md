@@ -77,3 +77,12 @@ curl -X POST http://localhost:8000/ocr \
 ## 備考
 - 初回起動時にPaddleOCRのモデルが自動ダウンロードされます（約300MB）
 - `raw_lines` に生のOCR結果が含まれるので、パース失敗時のデバッグに使えます
+
+## DB
+
+PostgreSQL + Prisma で管理しています。詳細は [db/README.md](db/README.md) を参照してください。
+
+```bash
+# backend + db をまとめて起動（ルートから）
+docker compose up -d
+```

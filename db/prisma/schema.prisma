@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  color     String?
+  icon      String?
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  expenses Expense[]
+  budgets  Budget[]
+}
+
+model Receipt {
+  id          String    @id @default(uuid())
+  imagePath   String
+  ocrRawLines Json
+  ocrStore    String?
+  ocrDate     DateTime? @db.Date
+  scannedAt   DateTime  @default(now())
+
+  expenses Expense[]
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  receiptId   String?
+  categoryId  String
+  storeName   String?
+  expenseDate DateTime @db.Date
+  totalAmount Int
+  memo        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  receipt  Receipt?      @relation(fields: [receiptId], references: [id])
+  category Category      @relation(fields: [categoryId], references: [id])
+  items    ExpenseItem[]
+}
+
+model ExpenseItem {
+  id        String   @id @default(uuid())
+  expenseId String
+  name      String
+  price     Int
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+}
+
+model Budget {
+  id         String   @id @default(uuid())
+  categoryId String
+  yearMonth  String   // YYYY-MM
+  amount     Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  category Category @relation(fields: [categoryId], references: [id])
+
+  @@unique([categoryId, yearMonth])
+}
