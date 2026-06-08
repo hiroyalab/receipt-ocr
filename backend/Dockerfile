@@ -16,8 +16,8 @@ RUN uv sync --frozen --no-dev
 ENV FLAGS_use_mkldnn=0
 ENV FLAGS_enable_pir_api=0
 
-COPY main.py ./
+COPY app/ ./app/
 
 EXPOSE 8000
-# モデルキャッシュは /root/.paddleocr をボリュームマウントして永続化する
-CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# PaddleOCRモデルキャッシュは /root/.paddleocr をボリュームマウントして永続化する
+CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
