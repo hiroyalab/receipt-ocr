@@ -4,7 +4,7 @@ import { getUsername, clearSession } from '../lib/auth';
 
 const navItems = [
   { to: '/', label: 'ホーム', icon: LayoutDashboard },
-  { to: '/scan', label: 'レシート読み取り', icon: Receipt },
+  { to: '/scan', label: 'レシート登録', icon: Receipt },
   { to: '/expenses', label: '支出管理', icon: ListOrdered },
   { to: '/calendar', label: 'カレンダー', icon: CalendarDays },
   { to: '/settings', label: '設定', icon: Settings },

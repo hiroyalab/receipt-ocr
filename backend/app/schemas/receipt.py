@@ -13,6 +13,8 @@ class Category(str, Enum):
     娯楽 = "娯楽"
     衣類 = "衣類"
     その他 = "その他"
+    旅行 = "旅行"
+    あのののののののの = "あのののののののの"
 
 
 class ReceiptItem(BaseModel):

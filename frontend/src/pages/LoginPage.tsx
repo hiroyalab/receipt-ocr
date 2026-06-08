@@ -43,8 +43,8 @@ export default function LoginPage() {
               type="text"
               autoComplete="username"
               autoFocus
-              style={{ height: '30px' }}
-              className="w-full px-4 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition shadow-sm"
+              style={{ height: '30px', fontSize: '16px' }}
+              className="w-full px-4 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition shadow-sm"
               placeholder="ユーザー名"
               value={username}
               onChange={(e) => { setUsername(e.target.value); setError(''); }}

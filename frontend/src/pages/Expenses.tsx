@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Trash2, ChevronDown, ChevronUp, Search, SlidersHorizontal, PackageOpen } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Trash2, ChevronDown, ChevronUp, PackageOpen, Pencil, Check } from 'lucide-react';
 import { getReceipts, deleteReceipt } from '../lib/storage';
 import { CATEGORIES, CATEGORY_COLORS } from '../types';
 import type { Category } from '../types';
@@ -9,6 +10,7 @@ function fmt(n: number) {
 }
 
 export default function Expenses() {
+  const navigate = useNavigate();
   const [receipts, setReceipts] = useState(getReceipts);
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('すべて');
@@ -41,25 +43,15 @@ export default function Expenses() {
       {/* フィルター */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-3 flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input
-            className="w-full pl-9 pr-3 py-2.5 bg-slate-50 rounded-xl text-sm text-slate-800 placeholder-slate-400 border border-slate-200 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 transition"
+            style={{ height: '36px', fontSize: '16px' }}
+            className="w-full pl-3 pr-3 bg-slate-50 rounded-xl text-slate-800 placeholder-slate-400 border border-slate-200 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 transition"
             placeholder="店舗名・商品名で検索"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="relative">
-          <SlidersHorizontal size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          <select
-            className="pl-8 pr-4 py-2.5 bg-slate-50 rounded-xl text-sm text-slate-700 border border-slate-200 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 appearance-none transition"
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-          >
-            <option>すべて</option>
-            {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-          </select>
-        </div>
+        <CategorySelect value={filterCategory} onChange={setFilterCategory} />
       </div>
 
       {/* リスト */}
@@ -97,6 +89,12 @@ export default function Expenses() {
                     {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                   </button>
                   <button
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 transition-colors shrink-0"
+                    onClick={() => navigate('/receipt/confirm', { state: { mode: 'edit', receipt: r } })}
+                  >
+                    <Pencil size={13} />
+                  </button>
+                  <button
                     className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-400 hover:bg-red-50 transition-colors shrink-0"
                     onClick={() => handleDelete(r.id)}
                   >
@@ -125,6 +123,49 @@ export default function Expenses() {
               </div>
             );
           })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CategorySelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const options = ['すべて', ...CATEGORIES];
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative sm:w-44">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        style={{ height: '36px' }}
+        className="w-full flex items-center justify-between px-3 bg-slate-50 rounded-xl text-sm text-slate-700 border border-slate-200 hover:border-indigo-300 hover:bg-white transition"
+      >
+        <span className={value === 'すべて' ? 'text-slate-400' : 'text-slate-800 font-medium'}>{value}</span>
+        <ChevronDown size={14} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-[calc(100%+6px)] w-full sm:w-44 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden z-50">
+          {options.map((opt) => (
+            <button
+              key={opt}
+              onClick={() => { onChange(opt); setOpen(false); }}
+              style={{ minHeight: '48px' }}
+              className="w-full flex items-center justify-between px-4 text-base hover:bg-slate-50 transition-colors"
+            >
+              <span className={opt === value ? 'text-indigo-600 font-semibold' : 'text-slate-700'}>{opt}</span>
+              {opt === value && <Check size={15} className="text-indigo-500 shrink-0" />}
+            </button>
+          ))}
         </div>
       )}
     </div>

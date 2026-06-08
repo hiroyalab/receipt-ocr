@@ -7,6 +7,7 @@ import Scan from './pages/Scan';
 import Expenses from './pages/Expenses';
 import CalendarPage from './pages/CalendarPage';
 import SettingsPage from './pages/SettingsPage';
+import ReceiptConfirmPage from './pages/ReceiptConfirmPage';
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
           <Route element={<Layout />}>
             <Route index element={<Dashboard />} />
             <Route path="scan" element={<Scan />} />
+            <Route path="receipt/confirm" element={<ReceiptConfirmPage />} />
             <Route path="expenses" element={<Expenses />} />
             <Route path="calendar" element={<CalendarPage />} />
             <Route path="settings" element={<SettingsPage />} />

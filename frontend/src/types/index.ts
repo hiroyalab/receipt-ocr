@@ -32,6 +32,7 @@ export type Category =
   | '娯楽'
   | '衣類'
   | 'その他';
+  
 
 export const CATEGORIES: Category[] = [
   '食費', '外食', '日用品', '交通費', '医療費', '娯楽', '衣類', 'その他',

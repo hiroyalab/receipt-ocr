@@ -4,7 +4,8 @@ import { Check, Trash2, Server, PiggyBank } from 'lucide-react';
 const BUDGET_KEY = 'monthly_budget';
 const BACKEND_KEY = 'backend_url';
 
-const inputClass = 'w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 transition';
+const inputClass = 'w-full px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 transition';
+const inputStyle = { height: '30px', fontSize: '16px' };
 
 export default function SettingsPage() {
   const [budget, setBudget] = useState(() => localStorage.getItem(BUDGET_KEY) ?? '100000');
@@ -37,7 +38,7 @@ export default function SettingsPage() {
           <p className="text-xs text-slate-400 mb-3 ml-[23px]">ダッシュボードの予算比較に使用します</p>
           <div className="flex items-center gap-2">
             <span className="text-sm text-slate-400 font-medium">¥</span>
-            <input type="number" className={inputClass} value={budget} onChange={(e) => setBudget(e.target.value)} min={0} step={1000} />
+            <input type="number" style={inputStyle} className={inputClass} value={budget} onChange={(e) => setBudget(e.target.value)} min={0} step={1000} />
           </div>
         </div>
 
@@ -47,13 +48,14 @@ export default function SettingsPage() {
             <h3 className="text-sm font-bold text-slate-800">バックエンドURL</h3>
           </div>
           <p className="text-xs text-slate-400 mb-3 ml-[23px]">OCR APIのエンドポイント</p>
-          <input type="url" className={inputClass} value={backendUrl} onChange={(e) => setBackendUrl(e.target.value)} />
+          <input type="url" style={inputStyle} className={inputClass} value={backendUrl} onChange={(e) => setBackendUrl(e.target.value)} />
         </div>
       </div>
 
       <button
         onClick={handleSave}
-        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm ${
+        style={{ height: '30px' }}
+        className={`flex items-center gap-2 px-5 rounded-xl text-sm font-semibold transition-all shadow-sm ${
           saved ? 'bg-emerald-500 text-white shadow-emerald-200' : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-200'
         }`}
       >
@@ -66,7 +68,8 @@ export default function SettingsPage() {
         <p className="text-xs text-slate-400 mb-4">すべてのレシートデータを削除します。この操作は取り消せません。</p>
         <button
           onClick={handleClearData}
-          className="flex items-center gap-2 px-4 py-2 border border-red-200 text-red-500 rounded-xl text-sm font-medium hover:bg-red-50 transition-colors"
+          style={{ height: '30px' }}
+          className="flex items-center gap-2 px-4 border border-red-200 text-red-500 rounded-xl text-sm font-medium hover:bg-red-50 transition-colors"
         >
           <Trash2 size={13} />
           データをすべて削除
