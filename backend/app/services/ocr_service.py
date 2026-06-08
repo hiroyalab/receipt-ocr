@@ -165,7 +165,7 @@ def _preprocess(file_bytes: bytes) -> bytes:
     return buf.getvalue()
 
 
-async def analyze_image(file_bytes: bytes) -> dict:
+def _run_ocr(file_bytes: bytes) -> dict:
     import base64
     file_bytes = _preprocess(file_bytes)
     image_base64 = base64.b64encode(file_bytes).decode()
@@ -187,3 +187,8 @@ async def analyze_image(file_bytes: bytes) -> dict:
         return {"success": True, "raw_lines": lines, "image_base64": image_base64, **parsed}
     finally:
         os.unlink(tmp_path)
+
+
+async def analyze_image(file_bytes: bytes) -> dict:
+    import asyncio
+    return await asyncio.to_thread(_run_ocr, file_bytes)
