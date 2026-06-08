@@ -1,13 +1,13 @@
-import { useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
 import { TrendingUp, TrendingDown, ArrowUpRight, PackageOpen } from 'lucide-react';
-import { getReceipts } from '../lib/storage';
+import { getReceipts } from '../lib/api';
 import { CATEGORY_COLORS } from '../types';
-import type { Category } from '../types';
+import type { Receipt, Category } from '../types';
 
 function fmt(n: number) {
   return n.toLocaleString('ja-JP', { style: 'currency', currency: 'JPY' });
@@ -39,9 +39,13 @@ function GaugeCircle({ pct }: { pct: number }) {
 }
 
 export default function Dashboard() {
-  const receipts = getReceipts();
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
   const now = new Date();
   const budget = Number(localStorage.getItem('monthly_budget') ?? 100000);
+
+  useEffect(() => {
+    getReceipts().then(setReceipts).catch(console.error);
+  }, []);
 
   const ym = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -64,7 +68,7 @@ export default function Dashboard() {
       .map(([name, value]) => ({ name, value, pct: Math.round((value / thisTotal) * 100) }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 5);
-  }, [thisMonth, receipts.length]);
+  }, [thisMR, thisTotal]);
 
   const monthlyData = useMemo(() => {
     const result = [];
@@ -75,7 +79,7 @@ export default function Dashboard() {
       result.push({ label: `${d.getMonth() + 1}月`, total, isCurrent: i === 0 });
     }
     return result;
-  }, [receipts.length]);
+  }, [receipts]);
 
   return (
     <div className="space-y-4 max-w-5xl">

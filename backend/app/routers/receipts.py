@@ -72,6 +72,7 @@ async def create_receipt(
         items=[item.model_dump() for item in body.items],
         category=body.category.value,
         total=total,
+        image_base64=body.image_base64,
     )
     db.add(receipt)
     await db.flush()
@@ -105,6 +106,7 @@ async def update_receipt(
     receipt.items = [item.model_dump() for item in body.items]
     receipt.category = body.category.value
     receipt.total = sum(item.price for item in body.items)
+    receipt.image_base64 = body.image_base64
 
     await db.flush()
     await db.refresh(receipt)

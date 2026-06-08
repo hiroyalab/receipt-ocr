@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Plus, X, Save } from 'lucide-react';
-import { saveReceipt } from '../lib/storage';
+import { createReceipt, updateReceipt } from '../lib/api';
 import { getUsername } from '../lib/auth';
 import { CATEGORIES } from '../types';
 import type { OcrResult, Receipt, Category } from '../types';
@@ -31,7 +31,13 @@ export default function ReceiptConfirmPage() {
   const [date, setDate] = useState(initial.date);
   const [category, setCategory] = useState<Category>(initial.category);
   const [items, setItems] = useState<OcrResult['items']>(initial.items);
-  const preview = state?.mode === 'ocr' ? state.preview : null;
+  const [saving, setSaving] = useState(false);
+
+  const preview = state?.mode === 'ocr'
+    ? state.preview
+    : state?.mode === 'edit' && state.receipt.image_base64
+      ? `data:image/jpeg;base64,${state.receipt.image_base64}`
+      : null;
 
   const total = items.reduce((s, i) => s + i.price, 0);
 
@@ -43,11 +49,24 @@ export default function ReceiptConfirmPage() {
     );
   }
 
-  const handleSave = () => {
-    const id = isEdit ? state.receipt.id : crypto.randomUUID();
-    const createdAt = isEdit ? state.receipt.createdAt : new Date().toISOString();
-    saveReceipt({ id, store, date, items, total, category, username, createdAt });
-    navigate(isEdit ? '/expenses' : '/expenses');
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const image_base64 = preview?.startsWith('data:')
+        ? preview.split(',')[1]
+        : preview ?? undefined;
+
+      const body = { username, store, date, items, category, image_base64 };
+
+      if (isEdit) {
+        await updateReceipt(state.receipt.id, body);
+      } else {
+        await createReceipt(body);
+      }
+      navigate('/expenses');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -61,10 +80,11 @@ export default function ReceiptConfirmPage() {
         </h2>
         <button
           onClick={handleSave}
+          disabled={saving}
           style={{ height: '36px' }}
-          className="flex items-center gap-2 px-5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-500 transition-colors shadow-md shadow-indigo-200"
+          className="flex items-center gap-2 px-5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-500 disabled:opacity-40 transition-colors shadow-md shadow-indigo-200"
         >
-          <Save size={14} /> 保存する
+          <Save size={14} /> {saving ? '保存中...' : '保存する'}
         </button>
       </div>
 
@@ -154,10 +174,11 @@ export default function ReceiptConfirmPage() {
             <div className="flex justify-end pt-2">
               <button
                 onClick={handleSave}
+                disabled={saving}
                 style={{ height: '36px' }}
-                className="flex items-center gap-2 px-6 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-500 transition-colors shadow-md shadow-indigo-200"
+                className="flex items-center gap-2 px-6 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-500 disabled:opacity-40 transition-colors shadow-md shadow-indigo-200"
               >
-                <Save size={14} /> 保存する
+                <Save size={14} /> {saving ? '保存中...' : '保存する'}
               </button>
             </div>
           </div>

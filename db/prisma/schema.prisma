@@ -4,92 +4,29 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  name         String
-  passwordHash String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id         String   @id @default(uuid()) @db.VarChar(36)
+  username   String   @unique @db.VarChar(50)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
 
-  categories Category[]
-  receipts   Receipt[]
-  expenses   Expense[]
-  budgets    Budget[]
-}
-
-model Category {
-  id        String   @id @default(uuid())
-  userId    String
-  name      String
-  color     String?
-  icon      String?
-  isDefault Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  user     User      @relation(fields: [userId], references: [id])
-  expenses Expense[]
-  budgets  Budget[]
-
-  @@unique([userId, name])
+  @@map("users")
 }
 
 model Receipt {
-  id          String    @id @default(uuid())
-  userId      String
-  imagePath   String
-  ocrRawLines Json
-  ocrStore    String?
-  ocrDate     DateTime? @db.Date
-  scannedAt   DateTime  @default(now())
+  id           String   @id @default(uuid()) @db.VarChar(36)
+  username     String   @db.VarChar(50)
+  store        String   @db.VarChar(200)
+  date         DateTime @db.Date
+  items        Json     @default("[]")
+  category     String   @db.VarChar(20)
+  total        Int
+  image_base64 String?  @db.Text
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
 
-  user     User      @relation(fields: [userId], references: [id])
-  expenses Expense[]
-}
-
-model Expense {
-  id          String   @id @default(uuid())
-  userId      String
-  receiptId   String?
-  categoryId  String
-  storeName   String?
-  expenseDate DateTime @db.Date
-  totalAmount Int
-  memo        String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  user     User          @relation(fields: [userId], references: [id])
-  receipt  Receipt?      @relation(fields: [receiptId], references: [id])
-  category Category      @relation(fields: [categoryId], references: [id])
-  items    ExpenseItem[]
-}
-
-model ExpenseItem {
-  id        String   @id @default(uuid())
-  expenseId String
-  name      String
-  price     Int
-  quantity  Int      @default(1)
-  createdAt DateTime @default(now())
-
-  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
-}
-
-model Budget {
-  id         String   @id @default(uuid())
-  userId     String
-  categoryId String
-  yearMonth  String   // YYYY-MM
-  amount     Int
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  user     User     @relation(fields: [userId], references: [id])
-  category Category @relation(fields: [categoryId], references: [id])
-
-  @@unique([userId, categoryId, yearMonth])
+  @@index([username])
+  @@index([date])
+  @@index([category])
+  @@map("receipts")
 }

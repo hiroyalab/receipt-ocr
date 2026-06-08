@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from enum import Enum
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel, field_validator
 
 
@@ -28,6 +28,7 @@ class ReceiptCreate(BaseModel):
     date: date
     items: List[ReceiptItem]
     category: Category
+    image_base64: Optional[str] = None
 
 
 class ReceiptOut(BaseModel):
@@ -38,6 +39,7 @@ class ReceiptOut(BaseModel):
     items: List[ReceiptItem]
     category: Category
     total: int
+    image_base64: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

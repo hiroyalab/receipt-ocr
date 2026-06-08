@@ -1,0 +1,17 @@
+{
+  "name": "receipt-ocr-db",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "push": "prisma db push",
+    "migrate": "prisma migrate dev",
+    "studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.0.0",
+    "pg": "^8.0.0"
+  },
+  "devDependencies": {
+    "prisma": "^7.0.0"
+  }
+}

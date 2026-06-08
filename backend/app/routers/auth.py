@@ -11,8 +11,14 @@ from app.schemas.auth import LoginRequest, LoginResponse, UserOut
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+ALLOWED_USERS = {"しほ", "ひろや"}
+
+
 @router.post("/login", response_model=LoginResponse)
 async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
+    if req.username not in ALLOWED_USERS:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
     result = await db.execute(select(User).where(User.username == req.username))
     user = result.scalars().first()
 

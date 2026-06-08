@@ -1,12 +1,17 @@
+import io
 import os
 import re
 import tempfile
 from datetime import date
 
+from PIL import Image, ImageOps
+from rembg import remove
+
 os.environ.setdefault("FLAGS_use_mkldnn", "0")
 os.environ.setdefault("FLAGS_enable_pir_api", "0")
 
 _ocr = None
+_MAX_PIXELS = 1920
 
 
 def get_ocr():
@@ -138,7 +143,33 @@ def parse_receipt_lines(lines: list[str]) -> dict:
     }
 
 
+def _preprocess(file_bytes: bytes) -> bytes:
+    img = Image.open(io.BytesIO(file_bytes))
+    img = ImageOps.exif_transpose(img)
+
+    if max(img.size) > _MAX_PIXELS:
+        img.thumbnail((_MAX_PIXELS, _MAX_PIXELS), Image.LANCZOS)
+
+    removed = remove(img)
+    bbox = removed.split()[3].getbbox()
+    if bbox:
+        cropped = removed.crop(bbox)
+        white_bg = Image.new("RGB", cropped.size, (255, 255, 255))
+        white_bg.paste(cropped, mask=cropped.split()[3])
+        img = white_bg
+    else:
+        img = img.convert("RGB")
+
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=85, optimize=True)
+    return buf.getvalue()
+
+
 async def analyze_image(file_bytes: bytes) -> dict:
+    import base64
+    file_bytes = _preprocess(file_bytes)
+    image_base64 = base64.b64encode(file_bytes).decode()
+
     with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
         tmp.write(file_bytes)
         tmp_path = tmp.name
@@ -153,6 +184,6 @@ async def analyze_image(file_bytes: bytes) -> dict:
                     lines.append(text)
 
         parsed = parse_receipt_lines(lines)
-        return {"success": True, "raw_lines": lines, **parsed}
+        return {"success": True, "raw_lines": lines, "image_base64": image_base64, **parsed}
     finally:
         os.unlink(tmp_path)

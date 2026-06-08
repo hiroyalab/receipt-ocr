@@ -11,7 +11,8 @@ export interface Receipt {
   items: ReceiptItem[];
   total: number;
   category: string;
-  createdAt: string;
+  created_at: string;
+  image_base64?: string;
 }
 
 export interface OcrResult {
@@ -21,6 +22,7 @@ export interface OcrResult {
   items: ReceiptItem[];
   total: number;
   raw_lines: string[];
+  image_base64?: string;
 }
 
 export type Category =

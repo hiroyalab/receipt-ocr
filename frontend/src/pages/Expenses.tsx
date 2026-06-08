@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Trash2, ChevronDown, ChevronUp, PackageOpen, Pencil, Check } from 'lucide-react';
-import { getReceipts, deleteReceipt } from '../lib/storage';
+import { getReceipts, deleteReceipt } from '../lib/api';
 import { CATEGORIES, CATEGORY_COLORS } from '../types';
-import type { Category } from '../types';
+import type { Receipt, Category } from '../types';
 
 function fmt(n: number) {
   return n.toLocaleString('ja-JP', { style: 'currency', currency: 'JPY' });
@@ -11,10 +11,14 @@ function fmt(n: number) {
 
 export default function Expenses() {
   const navigate = useNavigate();
-  const [receipts, setReceipts] = useState(getReceipts);
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('すべて');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    getReceipts().then(setReceipts).catch(console.error);
+  }, []);
 
   const filtered = receipts.filter((r) => {
     const matchCat = filterCategory === 'すべて' || r.category === filterCategory;
@@ -24,10 +28,10 @@ export default function Expenses() {
 
   const total = filtered.reduce((s, r) => s + r.total, 0);
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!confirm('このレシートを削除しますか？')) return;
-    deleteReceipt(id);
-    setReceipts(getReceipts());
+    await deleteReceipt(id);
+    setReceipts((prev) => prev.filter((r) => r.id !== id));
   };
 
   return (

@@ -1,6 +1,7 @@
 import uuid
 from datetime import date, datetime, timezone
-from sqlalchemy import String, Date, DateTime, Integer, JSON
+from typing import Optional
+from sqlalchemy import String, Date, DateTime, Integer, JSON, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from app.core.database import Base
 
@@ -17,6 +18,7 @@ class Receipt(Base):
     items: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     category: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     total: Mapped[int] = mapped_column(Integer, nullable=False)
+    image_base64: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

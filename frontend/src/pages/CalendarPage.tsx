@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { getReceipts } from '../lib/storage';
+import { getReceipts } from '../lib/api';
 import { CATEGORY_COLORS } from '../types';
-import type { Category } from '../types';
+import type { Receipt, Category } from '../types';
 
 function fmt(n: number) {
   return n.toLocaleString('ja-JP', { style: 'currency', currency: 'JPY' });
@@ -15,8 +15,12 @@ export default function CalendarPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
   const [selected, setSelected] = useState<string | null>(null);
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
 
-  const receipts = getReceipts();
+  useEffect(() => {
+    getReceipts().then(setReceipts).catch(console.error);
+  }, []);
+
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   const goBack = () => { if (month === 0) { setYear(y => y - 1); setMonth(11); } else setMonth(m => m - 1); };
