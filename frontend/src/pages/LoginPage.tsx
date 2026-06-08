@@ -1,70 +1,65 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User } from 'lucide-react';
+import { Wallet, ArrowRight, Loader2 } from 'lucide-react';
 import { saveSession } from '../lib/auth';
+import { login } from '../lib/api';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const trimmed = username.trim();
-    if (!trimmed) {
-      setError('ユーザー名を入力してください');
-      return;
+    if (!trimmed) { setError('ユーザー名を入力してください'); return; }
+    setLoading(true);
+    try {
+      const { user, token } = await login(trimmed);
+      saveSession(user.username, token);
+      navigate('/', { replace: true });
+    } catch {
+      setError('ログインに失敗しました。サーバーに接続できません。');
+    } finally {
+      setLoading(false);
     }
-    // バックエンド未実装のため、ユーザー名をそのままトークンとして扱う
-    saveSession(trimmed, trimmed);
-    navigate('/', { replace: true });
   };
 
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="inline-flex w-14 h-14 bg-indigo-600 rounded-2xl items-center justify-center mb-4">
-            <User size={28} className="text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-800">家計簿アプリ</h1>
-          <p className="text-sm text-slate-500 mt-1">ユーザー名を入力してください</p>
+      <div className="flex flex-col items-center">
+        {/* ブランド */}
+        <div className="inline-flex w-14 h-14 bg-indigo-600 rounded-2xl items-center justify-center mb-5 shadow-lg shadow-indigo-200">
+          <Wallet size={26} className="text-white" />
         </div>
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">家計簿アプリ</h1>
+        <p className="text-sm text-slate-500 mt-1">レシートで家計を賢く管理する</p>
 
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white rounded-2xl shadow-sm p-8 space-y-5"
-        >
+        {/* フォーム — サブタイトルと同幅・間を空ける */}
+        <form onSubmit={handleSubmit} className="w-64" style={{ marginTop: '1rem' }}>
           <div>
-            <label
-              htmlFor="username"
-              className="block text-sm font-medium text-slate-700 mb-1.5"
-            >
-              ユーザー名
-            </label>
             <input
-              id="username"
               type="text"
               autoComplete="username"
               autoFocus
-              className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition"
-              placeholder="例: taro"
+              style={{ height: '30px' }}
+              className="w-full px-4 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition shadow-sm"
+              placeholder="ユーザー名"
               value={username}
-              onChange={(e) => {
-                setUsername(e.target.value);
-                setError('');
-              }}
+              onChange={(e) => { setUsername(e.target.value); setError(''); }}
             />
-            {error && (
-              <p className="mt-1.5 text-xs text-red-500">{error}</p>
-            )}
+            {error && <p className="mt-1.5 text-xs text-red-500">{error}</p>}
           </div>
 
           <button
             type="submit"
-            className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 active:bg-indigo-800 transition-colors"
+            disabled={loading}
+            style={{ marginTop: '1rem', height: '30px' }}
+            className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md shadow-indigo-200"
           >
-            はじめる
+            {loading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
+            {loading ? '接続中...' : 'はじめる'}
           </button>
         </form>
       </div>
