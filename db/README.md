@@ -39,13 +39,13 @@ cp db/.env.example .env
 ### 3. マイグレーション実行
 
 ```bash
-npx prisma migrate dev --schema=db/prisma/schema.prisma
+npx prisma migrate dev
 ```
 
 ### 4. Prisma Client 生成
 
 ```bash
-npx prisma generate --schema=db/prisma/schema.prisma
+npx prisma generate
 ```
 
 ## テーブル設計
@@ -163,5 +163,5 @@ docker compose down
 docker compose down -v
 
 # Prisma Studio（GUI でデータ確認）
-npx prisma studio --schema=db/prisma/schema.prisma
+npx prisma studio
 ```
