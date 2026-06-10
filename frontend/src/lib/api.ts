@@ -6,6 +6,7 @@ export interface ReceiptCreate {
   store: string;
   date: string;
   items: ReceiptItem[];
+  tax: number;
   category: Category;
   image_base64?: string;
 }
@@ -34,10 +35,11 @@ export async function getReceipts(): Promise<Receipt[]> {
 }
 
 export async function createReceipt(body: ReceiptCreate): Promise<Receipt> {
-  const total = body.items.reduce((s, i) => s + i.price, 0);
+  const subtotal = body.items.reduce((s, i) => s + i.price * (i.quantity || 1), 0);
+  const total = subtotal + (body.tax || 0);
   const { data, error } = await supabase
     .from('receipts')
-    .insert({ ...body, category: body.category, total })
+    .insert({ ...body, total })
     .select()
     .single();
 
@@ -46,10 +48,11 @@ export async function createReceipt(body: ReceiptCreate): Promise<Receipt> {
 }
 
 export async function updateReceipt(id: string, body: ReceiptCreate): Promise<Receipt> {
-  const total = body.items.reduce((s, i) => s + i.price, 0);
+  const subtotal = body.items.reduce((s, i) => s + i.price * (i.quantity || 1), 0);
+  const total = subtotal + (body.tax || 0);
   const { data, error } = await supabase
     .from('receipts')
-    .update({ ...body, category: body.category, total })
+    .update({ ...body, total })
     .eq('id', id)
     .select()
     .single();

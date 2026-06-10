@@ -7,8 +7,10 @@ const PROMPT = `このレシート画像から以下の情報をJSON形式で抽
   "store": "店名",
   "date": "YYYY-MM-DD",
   "items": [
-    {"name": "商品名", "price": 金額(整数)}
+    {"name": "商品名", "price": 金額(整数), "quantity": 数量(整数) },
+    ...
   ],
+  "tax": 税額(整数),
   "total": 合計金額(整数)
 }
 
@@ -52,6 +54,35 @@ async function readBody(req: VercelRequest): Promise<{ imageBase64: string; mime
   });
 }
 
+const MODELS = [
+  'gemini-3.5-flash',
+  'gemini-3.1-flash-lite',
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+];
+
+async function callGemini(ai: GoogleGenAI, imageBase64: string, mimeType: string): Promise<string> {
+  let lastError: Error = new Error('Gemini API unavailable');
+  for (const model of MODELS) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: [{ parts: [
+          { text: PROMPT },
+          { inlineData: { mimeType, data: imageBase64 } },
+        ]}],
+      });
+      return response.text?.trim() ?? '';
+    } catch (e) {
+      lastError = e instanceof Error ? e : new Error(String(e));
+      const isRetryable = lastError.message.includes('503') || lastError.message.includes('429');
+      if (!isRetryable) throw lastError;
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
+  throw lastError;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -61,17 +92,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { imageBase64, mimeType } = await readBody(req);
     const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [
-        { parts: [
-          { text: PROMPT },
-          { inlineData: { mimeType, data: imageBase64 } },
-        ]},
-      ],
-    });
-
-    let text = response.text?.trim() ?? '';
+    let text = await callGemini(ai, imageBase64, mimeType);
     if (text.startsWith('```')) {
       text = text.split('```')[1];
       if (text.startsWith('json')) text = text.slice(4);

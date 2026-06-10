@@ -4,7 +4,7 @@ import { Plus, X, Save } from 'lucide-react';
 import { createReceipt, updateReceipt } from '../lib/api';
 import { getUsername } from '../lib/auth';
 import { CATEGORIES } from '../types';
-import type { OcrResult, Receipt, Category } from '../types';
+import type { OcrResult, Receipt, Category, ReceiptItem } from '../types';
 
 function fmt(n: number) {
   return n.toLocaleString('ja-JP', { style: 'currency', currency: 'JPY' });
@@ -12,6 +12,7 @@ function fmt(n: number) {
 
 const h30 = { height: '30px', fontSize: '16px' };
 const inputCls = 'w-full px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 transition';
+const inlineCls = 'w-full px-2 bg-transparent border border-transparent rounded-lg text-sm text-slate-800 focus:bg-slate-50 focus:border-slate-200 focus:outline-none transition';
 
 type OcrState = { mode: 'ocr'; result: OcrResult; preview: string | null };
 type EditState = { mode: 'edit'; receipt: Receipt };
@@ -23,23 +24,30 @@ export default function ReceiptConfirmPage() {
   const username = getUsername() ?? '';
 
   const isEdit = state?.mode === 'edit';
-  const initial = isEdit
-    ? { store: state.receipt.store, date: state.receipt.date, category: state.receipt.category as Category, items: state.receipt.items }
-    : { store: (state as OcrState | null)?.result.store ?? '', date: (state as OcrState | null)?.result.date ?? '', category: '食費' as Category, items: (state as OcrState | null)?.result.items ?? [] };
+  const ocr = state?.mode === 'ocr' ? state.result : null;
+  const receipt = state?.mode === 'edit' ? state.receipt : null;
 
-  const [store, setStore] = useState(initial.store);
-  const [date, setDate] = useState(initial.date);
-  const [category, setCategory] = useState<Category>(initial.category);
-  const [items, setItems] = useState<OcrResult['items']>(initial.items);
+  const initialItems: ReceiptItem[] = (receipt?.items ?? ocr?.items ?? []).map((i) => ({
+    name: i.name,
+    price: i.price,
+    quantity: (i as ReceiptItem).quantity ?? 1,
+  }));
+
+  const [store, setStore] = useState(receipt?.store ?? ocr?.store ?? '');
+  const [date, setDate] = useState(receipt?.date ?? ocr?.date ?? '');
+  const [category, setCategory] = useState<Category>((receipt?.category ?? '食費') as Category);
+  const [items, setItems] = useState<ReceiptItem[]>(initialItems);
+  const [tax, setTax] = useState<number>(receipt?.tax ?? ocr?.tax ?? 0);
   const [saving, setSaving] = useState(false);
 
   const preview = state?.mode === 'ocr'
     ? state.preview
-    : state?.mode === 'edit' && state.receipt.image_base64
-      ? `data:image/jpeg;base64,${state.receipt.image_base64}`
+    : receipt?.image_base64
+      ? `data:image/jpeg;base64,${receipt.image_base64}`
       : null;
 
-  const total = items.reduce((s, i) => s + i.price, 0);
+  const subtotal = items.reduce((s, i) => s + i.price * (i.quantity || 1), 0);
+  const total = subtotal + tax;
 
   if (!state) {
     return (
@@ -49,17 +57,19 @@ export default function ReceiptConfirmPage() {
     );
   }
 
+  const updateItem = (i: number, patch: Partial<ReceiptItem>) => {
+    const next = [...items];
+    next[i] = { ...next[i], ...patch };
+    setItems(next);
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      const image_base64 = preview?.startsWith('data:')
-        ? preview.split(',')[1]
-        : preview ?? undefined;
-
-      const body = { username, store, date, items, category, image_base64 };
-
+      const image_base64 = preview?.startsWith('data:') ? preview.split(',')[1] : preview ?? undefined;
+      const body = { username, store, date, items, tax, category, image_base64 };
       if (isEdit) {
-        await updateReceipt(state.receipt.id, body);
+        await updateReceipt(receipt!.id, body);
       } else {
         await createReceipt(body);
       }
@@ -78,12 +88,8 @@ export default function ReceiptConfirmPage() {
             {isEdit ? '内容を編集して保存' : 'OCR結果の編集'}
           </span>
         </h2>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          style={{ height: '36px' }}
-          className="flex items-center gap-2 px-5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-500 disabled:opacity-40 transition-colors shadow-md shadow-indigo-200"
-        >
+        <button onClick={handleSave} disabled={saving} style={{ height: '36px' }}
+          className="flex items-center gap-2 px-5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-500 disabled:opacity-40 transition-colors shadow-md shadow-indigo-200">
           <Save size={14} /> {saving ? '保存中...' : '保存する'}
         </button>
       </div>
@@ -120,33 +126,30 @@ export default function ReceiptConfirmPage() {
             {/* 商品一覧 */}
             <div>
               <p className="text-sm font-bold text-slate-700 mb-2">商品一覧</p>
-
               <div className="border border-slate-200 rounded-xl overflow-hidden">
-                <div className="grid grid-cols-[1fr_120px_32px] bg-slate-50 px-3 py-2 border-b border-slate-200">
+                {/* ヘッダー */}
+                <div className="grid grid-cols-[1fr_64px_100px_32px] bg-slate-50 px-3 py-2 border-b border-slate-200 gap-2">
                   <span className="text-xs font-bold text-slate-500">商品名</span>
-                  <span className="text-xs font-bold text-slate-500 text-right">金額</span>
+                  <span className="text-xs font-bold text-slate-500 text-center">数量</span>
+                  <span className="text-xs font-bold text-slate-500 text-right">単価</span>
                   <span />
                 </div>
+                {/* 行 */}
                 <div className="divide-y divide-slate-100">
                   {items.map((item, i) => (
-                    <div key={i} className="grid grid-cols-[1fr_120px_32px] items-center px-3 py-1.5 gap-2">
-                      <input
-                        style={h30}
-                        className="w-full px-2 bg-transparent border border-transparent rounded-lg text-sm text-slate-800 focus:bg-slate-50 focus:border-slate-200 focus:outline-none transition"
-                        value={item.name} placeholder="商品名"
-                        onChange={(e) => { const a = [...items]; a[i] = { ...a[i], name: e.target.value }; setItems(a); }}
-                      />
-                      <input
-                        type="number"
-                        style={h30}
+                    <div key={i} className="grid grid-cols-[1fr_64px_100px_32px] items-center px-3 py-1.5 gap-2">
+                      <input style={h30} className={inlineCls} value={item.name} placeholder="商品名"
+                        onChange={(e) => updateItem(i, { name: e.target.value })} />
+                      <input type="number" style={h30} min={1}
+                        className="w-full px-2 bg-transparent border border-transparent rounded-lg text-sm text-center tabular-nums text-slate-800 focus:bg-slate-50 focus:border-slate-200 focus:outline-none transition"
+                        value={item.quantity}
+                        onChange={(e) => updateItem(i, { quantity: Math.max(1, Number(e.target.value)) })} />
+                      <input type="number" style={h30}
                         className="w-full px-2 bg-transparent border border-transparent rounded-lg text-sm text-right tabular-nums text-slate-800 focus:bg-slate-50 focus:border-slate-200 focus:outline-none transition"
                         value={item.price}
-                        onChange={(e) => { const a = [...items]; a[i] = { ...a[i], price: Number(e.target.value) }; setItems(a); }}
-                      />
-                      <button
-                        className="w-6 h-6 flex items-center justify-center text-slate-300 hover:text-red-400 transition-colors mx-auto"
-                        onClick={() => setItems(items.filter((_, j) => j !== i))}
-                      >
+                        onChange={(e) => updateItem(i, { price: Number(e.target.value) })} />
+                      <button className="w-6 h-6 flex items-center justify-center text-slate-300 hover:text-red-400 transition-colors mx-auto"
+                        onClick={() => setItems(items.filter((_, j) => j !== i))}>
                         <X size={13} />
                       </button>
                     </div>
@@ -155,29 +158,39 @@ export default function ReceiptConfirmPage() {
                     <div className="px-3 py-4 text-center text-sm text-slate-300">商品を追加してください</div>
                   )}
                 </div>
-                <div className="grid grid-cols-[1fr_120px_32px] items-center px-3 py-3 border-t border-slate-200 bg-slate-50">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">合計</span>
-                  <span className="text-sm font-bold text-slate-900 tabular-nums text-right">{fmt(total)}</span>
-                  <span />
+                {/* フッター */}
+                <div className="border-t border-slate-200 bg-slate-50">
+                  <div className="grid grid-cols-[1fr_64px_100px_32px] items-center px-3 py-2 gap-2">
+                    <span className="text-xs text-slate-500 col-span-2">小計</span>
+                    <span className="text-sm tabular-nums text-slate-700 text-right">{fmt(subtotal)}</span>
+                    <span />
+                  </div>
+                  <div className="grid grid-cols-[1fr_64px_100px_32px] items-center px-3 py-1.5 gap-2 border-t border-slate-100">
+                    <span className="text-xs text-slate-500 col-span-2">消費税</span>
+                    <input type="number" style={{ height: '26px', fontSize: '14px' }}
+                      className="w-full px-2 bg-white border border-slate-200 rounded-lg text-sm text-right tabular-nums text-slate-800 focus:outline-none focus:border-indigo-400 transition"
+                      value={tax}
+                      onChange={(e) => setTax(Number(e.target.value))} />
+                    <span />
+                  </div>
+                  <div className="grid grid-cols-[1fr_64px_100px_32px] items-center px-3 py-2 gap-2 border-t border-slate-200">
+                    <span className="text-xs font-bold text-slate-700 col-span-2">合計（税込）</span>
+                    <span className="text-sm font-bold text-slate-900 tabular-nums text-right">{fmt(total)}</span>
+                    <span />
+                  </div>
                 </div>
               </div>
 
-              <button
-                onClick={() => setItems([...items, { name: '', price: 0 }])}
+              <button onClick={() => setItems([...items, { name: '', price: 0, quantity: 1 }])}
                 style={{ height: '40px', fontSize: '16px' }}
-                className="mt-2 w-full flex items-center justify-center gap-2 border border-dashed border-slate-300 rounded-xl text-sm font-medium text-slate-500 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
-              >
+                className="mt-2 w-full flex items-center justify-center gap-2 border border-dashed border-slate-300 rounded-xl text-sm font-medium text-slate-500 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
                 <Plus size={15} /> 商品を追加
               </button>
             </div>
 
             <div className="flex justify-end pt-2">
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                style={{ height: '36px' }}
-                className="flex items-center gap-2 px-6 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-500 disabled:opacity-40 transition-colors shadow-md shadow-indigo-200"
-              >
+              <button onClick={handleSave} disabled={saving} style={{ height: '36px' }}
+                className="flex items-center gap-2 px-6 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-500 disabled:opacity-40 transition-colors shadow-md shadow-indigo-200">
                 <Save size={14} /> {saving ? '保存中...' : '保存する'}
               </button>
             </div>

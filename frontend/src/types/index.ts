@@ -1,6 +1,7 @@
 export interface ReceiptItem {
   name: string;
   price: number;
+  quantity: number;
 }
 
 export interface Receipt {
@@ -9,6 +10,7 @@ export interface Receipt {
   store: string;
   date: string;
   items: ReceiptItem[];
+  tax: number;
   total: number;
   category: string;
   created_at: string;
@@ -20,6 +22,7 @@ export interface OcrResult {
   store: string;
   date: string;
   items: ReceiptItem[];
+  tax: number;
   total: number;
   raw_lines: string[];
   image_base64?: string;
@@ -34,7 +37,6 @@ export type Category =
   | '娯楽'
   | '衣類'
   | 'その他';
-  
 
 export const CATEGORIES: Category[] = [
   '食費', '外食', '日用品', '交通費', '医療費', '娯楽', '衣類', 'その他',
