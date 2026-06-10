@@ -35,7 +35,7 @@ export async function getReceipts(): Promise<Receipt[]> {
 }
 
 export async function createReceipt(body: ReceiptCreate): Promise<Receipt> {
-  const subtotal = body.items.reduce((s, i) => s + i.price * (i.quantity || 1), 0);
+  const subtotal = body.items.reduce((s, i) => s + i.price, 0);
   const total = subtotal + (body.tax || 0);
   const { data, error } = await supabase
     .from('receipts')
@@ -48,7 +48,7 @@ export async function createReceipt(body: ReceiptCreate): Promise<Receipt> {
 }
 
 export async function updateReceipt(id: string, body: ReceiptCreate): Promise<Receipt> {
-  const subtotal = body.items.reduce((s, i) => s + i.price * (i.quantity || 1), 0);
+  const subtotal = body.items.reduce((s, i) => s + i.price, 0);
   const total = subtotal + (body.tax || 0);
   const { data, error } = await supabase
     .from('receipts')

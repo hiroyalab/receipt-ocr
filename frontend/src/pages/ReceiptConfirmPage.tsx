@@ -46,7 +46,7 @@ export default function ReceiptConfirmPage() {
       ? `data:image/jpeg;base64,${receipt.image_base64}`
       : null;
 
-  const subtotal = items.reduce((s, i) => s + i.price * (i.quantity || 1), 0);
+  const subtotal = items.reduce((s, i) => s + i.price, 0);
   const total = subtotal + tax;
 
   if (!state) {
