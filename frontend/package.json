@@ -10,6 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/genai": "^2.8.0",
+    "@supabase/supabase-js": "^2.108.1",
+    "@vercel/node": "^5.8.14",
     "axios": "^1.17.0",
     "lucide-react": "^1.17.0",
     "react": "^19.2.6",

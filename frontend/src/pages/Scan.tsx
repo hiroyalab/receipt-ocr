@@ -2,8 +2,6 @@ import { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload, Loader2, AlertCircle, CloudUpload } from 'lucide-react';
 import { ocrReceipt } from '../lib/api';
-import { getUsername } from '../lib/auth';
-
 const h30 = { height: '30px' };
 
 type Step = 'upload' | 'loading';
@@ -16,7 +14,6 @@ export default function Scan() {
   const [dragging, setDragging] = useState(false);
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
-  const username = getUsername() ?? '';
 
   const selectFile = useCallback((f: File) => {
     if (!f.type.startsWith('image/')) { setError('画像ファイルを選択してください'); return; }
@@ -35,7 +32,7 @@ export default function Scan() {
     if (!file) return;
     setStep('loading');
     try {
-      const res = await ocrReceipt(file, username);
+      const res = await ocrReceipt(file);
       const optimizedPreview = res.image_base64
         ? `data:image/jpeg;base64,${res.image_base64}`
         : preview;

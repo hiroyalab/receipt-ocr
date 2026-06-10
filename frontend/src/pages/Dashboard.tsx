@@ -209,7 +209,7 @@ export default function Dashboard() {
             <Tooltip
               formatter={(v) => fmt(Number(v))}
               contentStyle={{ fontSize: 12, borderRadius: 10, border: '1px solid #e2e8f0', boxShadow: '0 4px 16px rgba(0,0,0,.06)' }}
-              cursor={{ fill: '#f8fafc', radius: [4, 4, 0, 0] }}
+              cursor={{ fill: '#f8fafc', radius: 4 }}
             />
             <Bar dataKey="total" name="支出" radius={[5, 5, 0, 0]}>
               {monthlyData.map((e, i) => (
