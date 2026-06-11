@@ -66,11 +66,17 @@ export async function deleteReceipt(id: string): Promise<void> {
   if (error) throw new Error('レシートの削除に失敗しました');
 }
 
-// 後方互換のため残す（LoginPage で使用）
+export function getAllowedUsers(): string[] {
+  return (import.meta.env.VITE_ALLOWED_USERS ?? '')
+    .split(',')
+    .map((s: string) => s.trim())
+    .filter(Boolean);
+}
+
 export async function login(
   username: string,
 ): Promise<{ user: { user_id: string; username: string }; token: string }> {
-  const ALLOWED = ['しほ', 'ひろや'];
-  if (!ALLOWED.includes(username)) throw new Error('ログインに失敗しました');
+  const allowed = getAllowedUsers();
+  if (!allowed.includes(username)) throw new Error('ログインに失敗しました');
   return { user: { user_id: username, username }, token: 'local' };
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Plus, X, Save } from 'lucide-react';
-import { createReceipt, updateReceipt } from '../lib/api';
+import { createReceipt, updateReceipt, getAllowedUsers } from '../lib/api';
 import { getUsername } from '../lib/auth';
 import { CATEGORIES } from '../types';
 import type { OcrResult, Receipt, Category, ReceiptItem } from '../types';
@@ -26,6 +26,7 @@ export default function ReceiptConfirmPage() {
   const isEdit = state?.mode === 'edit';
   const ocr = state?.mode === 'ocr' ? state.result : null;
   const receipt = state?.mode === 'edit' ? state.receipt : null;
+  const allowedUsers = getAllowedUsers();
 
   const initialItems: ReceiptItem[] = (receipt?.items ?? ocr?.items ?? []).map((i) => ({
     name: i.name,
@@ -33,6 +34,7 @@ export default function ReceiptConfirmPage() {
     quantity: (i as ReceiptItem).quantity ?? 1,
   }));
 
+  const [registrant, setRegistrant] = useState(receipt?.username ?? username);
   const [store, setStore] = useState(receipt?.store ?? ocr?.store ?? '');
   const [date, setDate] = useState(receipt?.date ?? ocr?.date ?? '');
   const [category, setCategory] = useState<Category>((receipt?.category ?? '食費') as Category);
@@ -67,7 +69,7 @@ export default function ReceiptConfirmPage() {
     setSaving(true);
     try {
       const image_base64 = preview?.startsWith('data:') ? preview.split(',')[1] : preview ?? undefined;
-      const body = { username, store, date, items, tax, category, image_base64 };
+      const body = { username: registrant, store, date, items, tax, category, image_base64 };
       if (isEdit) {
         await updateReceipt(receipt!.id, body);
       } else {
@@ -109,7 +111,7 @@ export default function ReceiptConfirmPage() {
 
           {/* 右：フォーム */}
           <div className="p-5 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               <Field label="店舗名">
                 <input style={h30} className={inputCls} value={store} onChange={(e) => setStore(e.target.value)} placeholder="店舗名" />
               </Field>
@@ -119,6 +121,11 @@ export default function ReceiptConfirmPage() {
               <Field label="カテゴリ">
                 <select style={h30} className={inputCls} value={category} onChange={(e) => setCategory(e.target.value as Category)}>
                   {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                </select>
+              </Field>
+              <Field label="登録者">
+                <select style={h30} className={inputCls} value={registrant} onChange={(e) => setRegistrant(e.target.value)}>
+                  {allowedUsers.map((u) => <option key={u}>{u}</option>)}
                 </select>
               </Field>
             </div>

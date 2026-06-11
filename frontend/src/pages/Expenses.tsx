@@ -83,7 +83,7 @@ export default function Expenses() {
                         {r.category}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-400 mt-0.5">{r.date}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{r.date}{r.username && <span className="ml-2 text-slate-300">· {r.username}</span>}</p>
                   </div>
                   <p className="font-bold text-slate-900 tabular-nums text-sm shrink-0 mr-2">{fmt(r.total)}</p>
                   <button
