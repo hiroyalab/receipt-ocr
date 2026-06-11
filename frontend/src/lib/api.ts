@@ -26,7 +26,7 @@ export async function ocrReceipt(file: File): Promise<OcrResult> {
 export async function getReceipts(): Promise<Receipt[]> {
   const { data, error } = await supabase
     .from('receipts')
-    .select('*')
+    .select('id, username, store, date, items, tax, total, category, created_at')
     .order('date', { ascending: false })
     .order('created_at', { ascending: false });
 
@@ -58,6 +58,16 @@ export async function updateReceipt(id: string, body: ReceiptCreate): Promise<Re
     .single();
 
   if (error) throw new Error('レシートの更新に失敗しました');
+  return data;
+}
+
+export async function getReceipt(id: string): Promise<Receipt> {
+  const { data, error } = await supabase
+    .from('receipts')
+    .select('*')
+    .eq('id', id)
+    .single();
+  if (error) throw new Error('レシートの取得に失敗しました');
   return data;
 }
 

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Trash2, ChevronDown, ChevronUp, PackageOpen, Pencil, Check } from 'lucide-react';
-import { getReceipts, deleteReceipt } from '../lib/api';
+import { getReceipts, getReceipt, deleteReceipt } from '../lib/api';
 import { CATEGORIES, CATEGORY_COLORS } from '../types';
 import type { Receipt, Category } from '../types';
 
@@ -15,9 +15,10 @@ export default function Expenses() {
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('すべて');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getReceipts().then(setReceipts).catch(console.error);
+    getReceipts().then(setReceipts).catch((e) => setError(e.message ?? String(e)));
   }, []);
 
   const filtered = receipts.filter((r) => {
@@ -58,6 +59,10 @@ export default function Expenses() {
         <CategorySelect value={filterCategory} onChange={setFilterCategory} />
       </div>
 
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 text-sm text-red-600">{error}</div>
+      )}
+
       {/* リスト */}
       {filtered.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 py-16 flex flex-col items-center gap-2">
@@ -94,7 +99,10 @@ export default function Expenses() {
                   </button>
                   <button
                     className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 transition-colors shrink-0"
-                    onClick={() => navigate('/receipt/confirm', { state: { mode: 'edit', receipt: r } })}
+                    onClick={async () => {
+                      const full = await getReceipt(r.id);
+                      navigate('/receipt/confirm', { state: { mode: 'edit', receipt: full } });
+                    }}
                   >
                     <Pencil size={13} />
                   </button>
