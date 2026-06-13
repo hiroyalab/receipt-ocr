@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, ChevronDown, ChevronUp, PackageOpen, Pencil, Check } from 'lucide-react';
+import { Trash2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, PackageOpen, Pencil, Check } from 'lucide-react';
 import { getReceipts, getReceipt, deleteReceipt } from '../lib/api';
 import { CATEGORIES, CATEGORY_COLORS } from '../types';
 import type { Receipt, Category } from '../types';
@@ -14,6 +14,7 @@ export default function Expenses() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('すべて');
+  const [filterMonth, setFilterMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,10 +22,22 @@ export default function Expenses() {
     getReceipts().then(setReceipts).catch((e) => setError(e.message ?? String(e)));
   }, []);
 
+  const changeMonth = (delta: number) => {
+    const [y, m] = filterMonth.split('-').map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    setFilterMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  };
+
+  const monthLabel = (() => {
+    const [y, m] = filterMonth.split('-');
+    return `${y}年${parseInt(m)}月`;
+  })();
+
   const filtered = receipts.filter((r) => {
+    const matchMonth = r.date.startsWith(filterMonth);
     const matchCat = filterCategory === 'すべて' || r.category === filterCategory;
     const matchQ = !search || r.store.includes(search) || r.items.some((i) => i.name.includes(search));
-    return matchCat && matchQ;
+    return matchMonth && matchCat && matchQ;
   });
 
   const total = filtered.reduce((s, r) => s + r.total, 0);
@@ -46,17 +59,32 @@ export default function Expenses() {
       </div>
 
       {/* フィルター */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-3 flex flex-col sm:flex-row gap-2">
-        <div className="relative flex-1">
-          <input
-            style={{ height: '36px', fontSize: '16px' }}
-            className="w-full pl-3 pr-3 bg-slate-50 rounded-xl text-slate-800 placeholder-slate-400 border border-slate-200 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 transition"
-            placeholder="店舗名・商品名で検索"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-3 flex flex-col gap-2">
+        {/* 月選択 */}
+        <div className="flex items-center justify-between gap-2">
+          <button onClick={() => changeMonth(-1)} style={{ height: '36px', width: '36px' }}
+            className="flex items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 transition shrink-0">
+            <ChevronLeft size={16} />
+          </button>
+          <span className="text-sm font-bold text-slate-800 tabular-nums">{monthLabel}</span>
+          <button onClick={() => changeMonth(1)} style={{ height: '36px', width: '36px' }}
+            className="flex items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 transition shrink-0">
+            <ChevronRight size={16} />
+          </button>
         </div>
-        <CategorySelect value={filterCategory} onChange={setFilterCategory} />
+        {/* 検索・カテゴリ */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <input
+              style={{ height: '36px', fontSize: '16px' }}
+              className="w-full pl-3 pr-3 bg-slate-50 rounded-xl text-slate-800 placeholder-slate-400 border border-slate-200 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 transition"
+              placeholder="店舗名・商品名で検索"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <CategorySelect value={filterCategory} onChange={setFilterCategory} />
+        </div>
       </div>
 
       {error && (

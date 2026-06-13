@@ -99,7 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (text.startsWith('json')) text = text.slice(4);
     }
     const parsed = JSON.parse(text.trim());
-    res.json({ success: true, image_base64: imageBase64, raw_lines: [], ...parsed });
+    res.json({ success: true, raw_lines: [], ...parsed });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'OCR処理に失敗しました';
     res.status(500).json({ error: msg });

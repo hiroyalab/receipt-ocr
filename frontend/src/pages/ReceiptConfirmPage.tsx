@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Plus, X, Save } from 'lucide-react';
-import { createReceipt, updateReceipt, getAllowedUsers } from '../lib/api';
+import { createReceipt, updateReceipt, uploadReceiptImage, getAllowedUsers } from '../lib/api';
 import { getUsername } from '../lib/auth';
 import { CATEGORIES } from '../types';
 import type { OcrResult, Receipt, Category, ReceiptItem } from '../types';
@@ -14,7 +14,7 @@ const h30 = { height: '30px', fontSize: '16px' };
 const inputCls = 'w-full px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 transition';
 const inlineCls = 'w-full px-2 bg-transparent border border-transparent rounded-lg text-sm text-slate-800 focus:bg-slate-50 focus:border-slate-200 focus:outline-none transition';
 
-type OcrState = { mode: 'ocr'; result: OcrResult; preview: string | null };
+type OcrState = { mode: 'ocr'; result: OcrResult; file: File | null };
 type EditState = { mode: 'edit'; receipt: Receipt };
 
 export default function ReceiptConfirmPage() {
@@ -42,11 +42,10 @@ export default function ReceiptConfirmPage() {
   const [tax, setTax] = useState<number>(receipt?.tax ?? ocr?.tax ?? 0);
   const [saving, setSaving] = useState(false);
 
-  const preview = state?.mode === 'ocr'
-    ? state.preview
-    : receipt?.image_base64
-      ? `data:image/jpeg;base64,${receipt.image_base64}`
-      : null;
+  const ocrFile = state?.mode === 'ocr' ? state.file : null;
+  const preview = ocrFile
+    ? URL.createObjectURL(ocrFile)
+    : receipt?.image_url ?? null;
 
   const subtotal = items.reduce((s, i) => s + i.price, 0);
   const total = subtotal + tax;
@@ -68,8 +67,10 @@ export default function ReceiptConfirmPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const image_base64 = preview?.startsWith('data:') ? preview.split(',')[1] : preview ?? undefined;
-      const body = { username: registrant, store, date, items, tax, category, image_base64 };
+      const image_url = ocrFile
+        ? await uploadReceiptImage(ocrFile)
+        : receipt?.image_url;
+      const body = { username: registrant, store, date, items, tax, category, image_url };
       if (isEdit) {
         await updateReceipt(receipt!.id, body);
       } else {

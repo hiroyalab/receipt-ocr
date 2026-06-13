@@ -14,7 +14,7 @@ export interface Receipt {
   total: number;
   category: string;
   created_at: string;
-  image_base64?: string;
+  image_url?: string;
 }
 
 export interface OcrResult {
@@ -25,7 +25,6 @@ export interface OcrResult {
   tax: number;
   total: number;
   raw_lines: string[];
-  image_base64?: string;
 }
 
 export type Category =

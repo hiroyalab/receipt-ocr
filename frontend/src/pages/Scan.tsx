@@ -33,10 +33,7 @@ export default function Scan() {
     setStep('loading');
     try {
       const res = await ocrReceipt(file);
-      const optimizedPreview = res.image_base64
-        ? `data:image/jpeg;base64,${res.image_base64}`
-        : preview;
-      navigate('/receipt/confirm', { state: { mode: 'ocr', result: res, preview: optimizedPreview } });
+      navigate('/receipt/confirm', { state: { mode: 'ocr', result: res, file } });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'OCRに失敗しました');
       setStep('upload');
