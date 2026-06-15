@@ -20,7 +20,7 @@ export default function Layout() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-100">
+    <div className="flex bg-slate-100" style={{ height: '100dvh' }}>
       {/* Sidebar */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 shrink-0">
         {/* Brand */}
@@ -65,7 +65,7 @@ export default function Layout() {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-x-hidden">
         {/* Mobile header */}
         <header className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200">
           <div className="flex items-center gap-2.5">

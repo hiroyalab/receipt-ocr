@@ -147,22 +147,16 @@ export default function ReceiptConfirmPage() {
                       <input type="number" style={h30} min={1}
                         className="w-full px-2 bg-transparent border border-transparent rounded-lg text-sm text-center tabular-nums text-slate-800 focus:bg-slate-50 focus:border-slate-200 focus:outline-none transition"
                         value={item.quantity || ''}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          if (v !== '') updateItem(i, { quantity: Math.max(1, Number(v)) });
-                        }}
-                        onBlur={(e) => {
-                          if (!e.target.value) updateItem(i, { quantity: 1 });
+                        onChange={(e) => updateItem(i, { quantity: Number(e.target.value) })}
+                        onBlur={() => {
+                          if (!item.quantity) updateItem(i, { quantity: 1 });
                         }} />
                       <input type="number" style={h30}
                         className="w-full px-2 bg-transparent border border-transparent rounded-lg text-sm text-right tabular-nums text-slate-800 focus:bg-slate-50 focus:border-slate-200 focus:outline-none transition"
                         value={item.price || ''}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          if (v !== '') updateItem(i, { price: Number(v) });
-                        }}
-                        onBlur={(e) => {
-                          if (!e.target.value) updateItem(i, { price: 0 });
+                        onChange={(e) => updateItem(i, { price: Number(e.target.value) })}
+                        onBlur={() => {
+                          if (!item.price) updateItem(i, { price: 0 });
                         }} />
                       <button className="w-6 h-6 flex items-center justify-center text-slate-300 hover:text-red-400 transition-colors mx-auto"
                         onClick={() => setItems(items.filter((_, j) => j !== i))}>
@@ -186,13 +180,8 @@ export default function ReceiptConfirmPage() {
                     <input type="number" style={{ height: '26px', fontSize: '14px' }}
                       className="w-full px-2 bg-white border border-slate-200 rounded-lg text-sm text-right tabular-nums text-slate-800 focus:outline-none focus:border-indigo-400 transition"
                       value={tax || ''}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        if (v !== '') setTax(Number(v));
-                      }}
-                      onBlur={(e) => {
-                        if (!e.target.value) setTax(0);
-                      }} />
+                      onChange={(e) => setTax(Number(e.target.value))}
+                      onBlur={() => { if (!tax) setTax(0); }} />
                     <span />
                   </div>
                   <div className="grid grid-cols-[1fr_64px_100px_32px] items-center px-3 py-2 gap-2 border-t border-slate-200">
