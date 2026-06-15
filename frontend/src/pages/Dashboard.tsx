@@ -61,6 +61,15 @@ export default function Dashboard() {
   const diff = lastTotal > 0 ? Math.round(((thisTotal - lastTotal) / lastTotal) * 100) : null;
   const budgetPct = budget > 0 ? (thisTotal / budget) * 100 : 0;
 
+  const userBreakdown = useMemo(() => {
+    const map: Record<string, number> = {};
+    thisMR.forEach((r) => {
+      const key = r.username || '不明';
+      map[key] = (map[key] ?? 0) + r.total;
+    });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]);
+  }, [thisMR]);
+
   const categoryData = useMemo(() => {
     const map: Record<string, number> = {};
     thisMR.forEach((r) => { map[r.category] = (map[r.category] ?? 0) + r.total; });
@@ -106,6 +115,24 @@ export default function Dashboard() {
               <p className="text-xs text-slate-400">先月データなし</p>
             )}
           </div>
+          {userBreakdown.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
+              {userBreakdown.map(([name, amount]) => (
+                <div key={name}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm text-slate-500">{name}</span>
+                    <span className="text-sm font-semibold text-slate-700 tabular-nums">{fmt(amount)}</span>
+                  </div>
+                  <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-indigo-400 rounded-full transition-all duration-500"
+                      style={{ width: `${thisTotal > 0 ? Math.round((amount / thisTotal) * 100) : 0}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* 予算達成率 */}

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Trash2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, PackageOpen, Pencil, Check } from 'lucide-react';
-import { getReceipts, getReceipt, deleteReceipt } from '../lib/api';
+import { getReceipts, getReceipt, deleteReceipt, getAllowedUsers } from '../lib/api';
 import { CATEGORIES, CATEGORY_COLORS } from '../types';
 import type { Receipt, Category } from '../types';
 
@@ -15,6 +15,8 @@ export default function Expenses() {
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('すべて');
   const [filterMonth, setFilterMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [filterUser, setFilterUser] = useState('すべて');
+  const allowedUsers = getAllowedUsers();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,8 +38,9 @@ export default function Expenses() {
   const filtered = receipts.filter((r) => {
     const matchMonth = r.date.startsWith(filterMonth);
     const matchCat = filterCategory === 'すべて' || r.category === filterCategory;
+    const matchUser = filterUser === 'すべて' || r.username === filterUser;
     const matchQ = !search || r.store.includes(search) || r.items.some((i) => i.name.includes(search));
-    return matchMonth && matchCat && matchQ;
+    return matchMonth && matchCat && matchUser && matchQ;
   });
 
   const total = filtered.reduce((s, r) => s + r.total, 0);
@@ -52,10 +55,6 @@ export default function Expenses() {
     <div className="space-y-5 max-w-3xl">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-slate-900">支出管理</h2>
-        <div className="text-sm text-slate-500">
-          <span className="font-bold text-slate-900 tabular-nums">{fmt(total)}</span>
-          <span className="ml-1 text-slate-400">/ {filtered.length}件</span>
-        </div>
       </div>
 
       {/* フィルター */}
@@ -72,6 +71,30 @@ export default function Expenses() {
             <ChevronRight size={16} />
           </button>
         </div>
+        {/* 合計金額・件数 */}
+        <div className="flex items-center justify-between px-1">
+          <span className="text-xs text-slate-400">{filtered.length}件</span>
+          <span className="text-base font-bold text-slate-900 tabular-nums">{fmt(total)}</span>
+        </div>
+        {/* ユーザーフィルター */}
+        {allowedUsers.length > 0 && (
+          <div className="flex gap-2">
+            {['すべて', ...allowedUsers].map((u) => (
+              <button
+                key={u}
+                onClick={() => setFilterUser(u)}
+                style={{ height: '36px', width: '4em' }}
+                className={`rounded-xl text-sm font-semibold border transition ${
+                  filterUser === u
+                    ? 'bg-indigo-600 text-white border-indigo-600'
+                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-indigo-300 hover:bg-white'
+                }`}
+              >
+                {u}
+              </button>
+            ))}
+          </div>
+        )}
         {/* 検索・カテゴリ */}
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Plus, X, Save } from 'lucide-react';
+import { Plus, X, Save, Check, ChevronDown } from 'lucide-react';
 import { createReceipt, updateReceipt, uploadReceiptImage, getAllowedUsers } from '../lib/api';
 import { getUsername } from '../lib/auth';
 import { CATEGORIES } from '../types';
@@ -120,14 +120,10 @@ export default function ReceiptConfirmPage() {
                 <input type="date" style={h30} className={inputCls} value={date} onChange={(e) => setDate(e.target.value)} />
               </Field>
               <Field label="カテゴリ">
-                <select style={h30} className={inputCls} value={category} onChange={(e) => setCategory(e.target.value as Category)}>
-                  {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-                </select>
+                <CustomSelect value={category} options={[...CATEGORIES]} onChange={(v) => setCategory(v as Category)} />
               </Field>
               <Field label="登録者">
-                <select style={h30} className={inputCls} value={registrant} onChange={(e) => setRegistrant(e.target.value)}>
-                  {allowedUsers.map((u) => <option key={u}>{u}</option>)}
-                </select>
+                <CustomSelect value={registrant} options={allowedUsers} onChange={setRegistrant} />
               </Field>
             </div>
 
@@ -150,12 +146,24 @@ export default function ReceiptConfirmPage() {
                         onChange={(e) => updateItem(i, { name: e.target.value })} />
                       <input type="number" style={h30} min={1}
                         className="w-full px-2 bg-transparent border border-transparent rounded-lg text-sm text-center tabular-nums text-slate-800 focus:bg-slate-50 focus:border-slate-200 focus:outline-none transition"
-                        value={item.quantity}
-                        onChange={(e) => updateItem(i, { quantity: Math.max(1, Number(e.target.value)) })} />
+                        value={item.quantity || ''}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v !== '') updateItem(i, { quantity: Math.max(1, Number(v)) });
+                        }}
+                        onBlur={(e) => {
+                          if (!e.target.value) updateItem(i, { quantity: 1 });
+                        }} />
                       <input type="number" style={h30}
                         className="w-full px-2 bg-transparent border border-transparent rounded-lg text-sm text-right tabular-nums text-slate-800 focus:bg-slate-50 focus:border-slate-200 focus:outline-none transition"
-                        value={item.price}
-                        onChange={(e) => updateItem(i, { price: Number(e.target.value) })} />
+                        value={item.price || ''}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v !== '') updateItem(i, { price: Number(v) });
+                        }}
+                        onBlur={(e) => {
+                          if (!e.target.value) updateItem(i, { price: 0 });
+                        }} />
                       <button className="w-6 h-6 flex items-center justify-center text-slate-300 hover:text-red-400 transition-colors mx-auto"
                         onClick={() => setItems(items.filter((_, j) => j !== i))}>
                         <X size={13} />
@@ -177,8 +185,14 @@ export default function ReceiptConfirmPage() {
                     <span className="text-xs text-slate-500 col-span-2">消費税</span>
                     <input type="number" style={{ height: '26px', fontSize: '14px' }}
                       className="w-full px-2 bg-white border border-slate-200 rounded-lg text-sm text-right tabular-nums text-slate-800 focus:outline-none focus:border-indigo-400 transition"
-                      value={tax}
-                      onChange={(e) => setTax(Number(e.target.value))} />
+                      value={tax || ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v !== '') setTax(Number(v));
+                      }}
+                      onBlur={(e) => {
+                        if (!e.target.value) setTax(0);
+                      }} />
                     <span />
                   </div>
                   <div className="grid grid-cols-[1fr_64px_100px_32px] items-center px-3 py-2 gap-2 border-t border-slate-200">
@@ -214,6 +228,49 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div>
       <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">{label}</label>
       {children}
+    </div>
+  );
+}
+
+function CustomSelect({ value, options, onChange }: { value: string; options: string[]; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        style={h30}
+        className="w-full flex items-center justify-between px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 hover:border-indigo-300 hover:bg-white focus:outline-none transition"
+      >
+        <span className="truncate">{value || <span className="text-slate-400">選択してください</span>}</span>
+        <ChevronDown size={14} className={`text-slate-400 shrink-0 ml-1 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-[calc(100%+4px)] w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden z-50">
+          {options.map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => { onChange(opt); setOpen(false); }}
+              style={{ minHeight: '44px' }}
+              className="w-full flex items-center justify-between px-4 text-sm hover:bg-slate-50 transition-colors"
+            >
+              <span className={opt === value ? 'text-indigo-600 font-semibold' : 'text-slate-700'}>{opt}</span>
+              {opt === value && <Check size={14} className="text-indigo-500 shrink-0" />}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
