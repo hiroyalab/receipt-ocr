@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Plus, X, Save, Check, ChevronDown } from 'lucide-react';
-import { createReceipt, updateReceipt, uploadReceiptImage, getAllowedUsers } from '../lib/api';
+import { createReceipt, updateReceipt, uploadReceiptImage, getRegistrantUsers } from '../lib/api';
 import { getUsername } from '../lib/auth';
 import { CATEGORIES } from '../types';
 import type { OcrResult, Receipt, Category, ReceiptItem } from '../types';
@@ -26,7 +26,7 @@ export default function ReceiptConfirmPage() {
   const isEdit = state?.mode === 'edit';
   const ocr = state?.mode === 'ocr' ? state.result : null;
   const receipt = state?.mode === 'edit' ? state.receipt : null;
-  const allowedUsers = getAllowedUsers();
+  const allowedUsers = getRegistrantUsers();
 
   const initialItems: ReceiptItem[] = (receipt?.items ?? ocr?.items ?? []).map((i) => ({
     name: i.name,
@@ -34,7 +34,8 @@ export default function ReceiptConfirmPage() {
     quantity: (i as ReceiptItem).quantity ?? 1,
   }));
 
-  const [registrant, setRegistrant] = useState(receipt?.username ?? username);
+  const defaultRegistrant = receipt?.username ?? username;
+  const [registrant, setRegistrant] = useState(defaultRegistrant === 'しほ' ? 'カード' : defaultRegistrant);
   const [store, setStore] = useState(receipt?.store ?? ocr?.store ?? '');
   const [date, setDate] = useState(receipt?.date ?? ocr?.date ?? '');
   const [category, setCategory] = useState<Category>((receipt?.category ?? '食費') as Category);

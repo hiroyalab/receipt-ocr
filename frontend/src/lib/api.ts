@@ -113,6 +113,10 @@ export function getAllowedUsers(): string[] {
     .filter(Boolean);
 }
 
+export function getRegistrantUsers(): string[] {
+  return [...getAllowedUsers(), 'カード'];
+}
+
 export async function login(
   username: string,
 ): Promise<{ user: { user_id: string; username: string }; token: string }> {
