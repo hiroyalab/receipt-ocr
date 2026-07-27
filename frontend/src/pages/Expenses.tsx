@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Trash2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, PackageOpen, Pencil, Check } from 'lucide-react';
-import { getReceipts, getReceipt, deleteReceipt, getAllowedUsers } from '../lib/api';
+import { getReceipts, getReceipt, deleteReceipt, getRegistrantUsers } from '../lib/api';
 import { CATEGORIES, CATEGORY_COLORS } from '../types';
 import type { Receipt, Category } from '../types';
 
@@ -16,7 +16,7 @@ export default function Expenses() {
   const [filterCategory, setFilterCategory] = useState<string>('すべて');
   const [filterMonth, setFilterMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [filterUser, setFilterUser] = useState('すべて');
-  const allowedUsers = getAllowedUsers();
+  const allowedUsers = getRegistrantUsers();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
