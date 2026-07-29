@@ -246,7 +246,7 @@ function CustomSelect({ value, options, onChange }: { value: string; options: st
         <ChevronDown size={14} className={`text-slate-400 shrink-0 ml-1 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute left-0 top-[calc(100%+4px)] w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden z-50">
+        <div className="absolute left-0 top-[calc(100%+4px)] w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-y-auto max-h-64 z-50">
           {options.map((opt) => (
             <button
               key={opt}

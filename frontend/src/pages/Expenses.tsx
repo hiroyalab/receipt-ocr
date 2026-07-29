@@ -217,7 +217,7 @@ function CategorySelect({ value, onChange }: { value: string; onChange: (v: stri
       </button>
 
       {open && (
-        <div className="absolute right-0 top-[calc(100%+6px)] w-full sm:w-44 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden z-50">
+        <div className="absolute right-0 top-[calc(100%+6px)] w-full sm:w-44 bg-white border border-slate-200 rounded-xl shadow-lg overflow-y-auto max-h-64 z-50">
           {options.map((opt) => (
             <button
               key={opt}

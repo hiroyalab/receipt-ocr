@@ -35,10 +35,11 @@ export type Category =
   | '医療費'
   | '娯楽'
   | '衣類'
+  | '光熱費・水道代'
   | 'その他';
 
 export const CATEGORIES: Category[] = [
-  '食費', '外食', '日用品', '交通費', '医療費', '娯楽', '衣類', 'その他',
+  '食費', '外食', '日用品', '交通費', '医療費', '娯楽', '衣類', '光熱費・水道代', 'その他',
 ];
 
 export const CATEGORY_COLORS: Record<Category, string> = {
@@ -49,5 +50,6 @@ export const CATEGORY_COLORS: Record<Category, string> = {
   '医療費': '#ef4444',
   '娯楽': '#ec4899',
   '衣類': '#8b5cf6',
+  '光熱費・水道代': '#06b6d4',
   'その他': '#94a3b8',
 };
