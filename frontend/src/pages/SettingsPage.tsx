@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Check, Trash2, PiggyBank } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { Check, PiggyBank } from 'lucide-react';
+// データ削除機能はオミット
+// import { Trash2 } from 'lucide-react';
+// import { supabase } from '../lib/supabase';
 
 const BUDGET_KEY = 'monthly_budget';
 
@@ -17,12 +19,13 @@ export default function SettingsPage() {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const handleClearData = async () => {
-    if (!confirm('すべてのレシートデータを削除します。よろしいですか？')) return;
-    const { error } = await supabase.from('receipts').delete().neq('id', '');
-    if (error) { alert('削除に失敗しました'); return; }
-    alert('削除しました');
-  };
+  // データ削除機能はオミット
+  // const handleClearData = async () => {
+  //   if (!confirm('すべてのレシートデータを削除します。よろしいですか？')) return;
+  //   const { error } = await supabase.from('receipts').delete().neq('id', '');
+  //   if (error) { alert('削除に失敗しました'); return; }
+  //   alert('削除しました');
+  // };
 
   return (
     <div className="max-w-lg space-y-5">
@@ -53,6 +56,7 @@ export default function SettingsPage() {
         {saved ? '保存しました' : '設定を保存'}
       </button>
 
+      {/* データ削除機能はオミット
       <div className="bg-white rounded-2xl shadow-sm border border-red-100 p-5">
         <h3 className="text-sm font-bold text-red-500 mb-1">データ削除</h3>
         <p className="text-xs text-slate-400 mb-4">すべてのレシートデータを削除します。この操作は取り消せません。</p>
@@ -65,6 +69,7 @@ export default function SettingsPage() {
           データをすべて削除
         </button>
       </div>
+      */}
     </div>
   );
 }
