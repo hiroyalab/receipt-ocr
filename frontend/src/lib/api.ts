@@ -1,4 +1,4 @@
-import type { OcrResult, Receipt, ReceiptItem, Category } from '../types';
+import type { OcrJob, Receipt, ReceiptItem, Category } from '../types';
 import { supabase } from './supabase';
 
 export interface ReceiptCreate {
@@ -29,7 +29,7 @@ async function compressImage(file: File, maxPx = 1280, quality = 0.8): Promise<B
   });
 }
 
-export async function uploadReceiptImage(file: File): Promise<string> {
+async function uploadImage(file: File): Promise<{ path: string; url: string }> {
   const compressed = await compressImage(file);
   const month = new Date().toISOString().slice(0, 7);
   const path = `${month}/${Date.now()}.jpg`;
@@ -38,19 +38,61 @@ export async function uploadReceiptImage(file: File): Promise<string> {
     .upload(path, compressed, { contentType: 'image/jpeg' });
   if (error) throw new Error('画像のアップロードに失敗しました');
   const { data } = supabase.storage.from('receipts').getPublicUrl(path);
-  return data.publicUrl;
+  return { path, url: data.publicUrl };
 }
 
-export async function ocrReceipt(file: File): Promise<OcrResult> {
-  const formData = new FormData();
-  formData.append('file', file);
+export async function uploadReceiptImage(file: File): Promise<string> {
+  return (await uploadImage(file)).url;
+}
 
-  const res = await fetch('/api/ocr', { method: 'POST', body: formData });
+async function startOcrJob(id: string): Promise<void> {
+  const res = await fetch('/api/ocr', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ job_id: id }),
+  });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'OCR処理に失敗しました' }));
+    const err = await res.json().catch(() => ({ error: 'OCR処理の開始に失敗しました' }));
     throw new Error(err.error);
   }
-  return res.json();
+}
+
+export async function createOcrJob(file: File, username: string): Promise<OcrJob> {
+  const { path, url } = await uploadImage(file);
+  const { data, error } = await supabase
+    .from('ocr_jobs')
+    .insert({ username, image_path: path, image_url: url })
+    .select()
+    .single();
+  if (error) throw new Error('OCRジョブの登録に失敗しました');
+  await startOcrJob(data.id);
+  return data;
+}
+
+export async function retryOcrJob(id: string): Promise<void> {
+  await startOcrJob(id);
+}
+
+export async function getOcrJobs(): Promise<OcrJob[]> {
+  const { data, error } = await supabase
+    .from('ocr_jobs')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw new Error('OCRジョブの取得に失敗しました');
+  return data ?? [];
+}
+
+// 画像ごと破棄する（レシート登録しなかった場合）
+export async function deleteOcrJob(job: OcrJob): Promise<void> {
+  await supabase.storage.from('receipts').remove([job.image_path]);
+  const { error } = await supabase.from('ocr_jobs').delete().eq('id', job.id);
+  if (error) throw new Error('OCRジョブの削除に失敗しました');
+}
+
+// レシート登録済みのジョブを片付ける（画像はレシートが参照するので残す）
+export async function completeOcrJob(id: string): Promise<void> {
+  const { error } = await supabase.from('ocr_jobs').delete().eq('id', id);
+  if (error) throw new Error('OCRジョブの削除に失敗しました');
 }
 
 export async function getReceipts(): Promise<Receipt[]> {

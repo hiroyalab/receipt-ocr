@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI } from '@google/genai';
+import { waitUntil } from '@vercel/functions';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 const PROMPT = `このレシート画像から以下の情報をJSON形式で抽出してください。
 
@@ -19,41 +21,7 @@ const PROMPT = `このレシート画像から以下の情報をJSON形式で抽
 - 商品名は簡潔に
 - JSONのみ返してください（説明文不要）`;
 
-export const config = { api: { bodyParser: false } };
-
-async function readBody(req: VercelRequest): Promise<{ imageBase64: string; mimeType: string }> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    req.on('data', (chunk) => chunks.push(chunk));
-    req.on('end', () => {
-      const body = Buffer.concat(chunks);
-      const boundary = req.headers['content-type']?.split('boundary=')[1];
-      if (!boundary) return reject(new Error('boundary not found'));
-
-      const sep = Buffer.from(`--${boundary}`);
-      const parts = [];
-      let start = 0;
-      while (true) {
-        const idx = body.indexOf(sep, start);
-        if (idx === -1) break;
-        parts.push(body.slice(start, idx));
-        start = idx + sep.length;
-      }
-
-      for (const part of parts) {
-        if (!part.includes(Buffer.from('filename='))) continue;
-        const headerEnd = part.indexOf('\r\n\r\n');
-        if (headerEnd === -1) continue;
-        const header = part.slice(0, headerEnd).toString();
-        const contentType = header.match(/Content-Type:\s*(.+)/i)?.[1]?.trim() ?? 'image/jpeg';
-        const imageData = part.slice(headerEnd + 4, part.length - 2);
-        return resolve({ imageBase64: imageData.toString('base64'), mimeType: contentType });
-      }
-      reject(new Error('image not found in form data'));
-    });
-    req.on('error', reject);
-  });
-}
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const MODELS = [
   'gemini-3.5-flash',
@@ -84,24 +52,60 @@ async function callGemini(ai: GoogleGenAI, imageBase64: string, mimeType: string
   throw lastError;
 }
 
+async function processJob(supabase: SupabaseClient, apiKey: string, jobId: string, imagePath: string) {
+  try {
+    const { data: blob, error } = await supabase.storage.from('receipts').download(imagePath);
+    if (error || !blob) throw new Error('画像の取得に失敗しました');
+    const imageBase64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
+
+    const ai = new GoogleGenAI({ apiKey });
+    let text = await callGemini(ai, imageBase64, blob.type || 'image/jpeg');
+    if (text.startsWith('```')) {
+      text = text.split('```')[1];
+      if (text.startsWith('json')) text = text.slice(4);
+    }
+    const parsed = JSON.parse(text.trim());
+    await supabase
+      .from('ocr_jobs')
+      .update({ status: 'done', result: { success: true, raw_lines: [], ...parsed }, error: null, updated_at: new Date().toISOString() })
+      .eq('id', jobId);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'OCR処理に失敗しました';
+    await supabase
+      .from('ocr_jobs')
+      .update({ status: 'error', error: msg, updated_at: new Date().toISOString() })
+      .eq('id', jobId);
+  }
+}
+
+// ジョブを受け付けたら 202 を即返し、OCR はレスポンス後に waitUntil で続行する
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'GEMINI_API_KEY not configured' });
 
-  try {
-    const { imageBase64, mimeType } = await readBody(req);
-    const ai = new GoogleGenAI({ apiKey });
-    let text = await callGemini(ai, imageBase64, mimeType);
-    if (text.startsWith('```')) {
-      text = text.split('```')[1];
-      if (text.startsWith('json')) text = text.slice(4);
-    }
-    const parsed = JSON.parse(text.trim());
-    res.json({ success: true, raw_lines: [], ...parsed });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'OCR処理に失敗しました';
-    res.status(500).json({ error: msg });
-  }
+  const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.VITE_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseKey) return res.status(500).json({ error: 'Supabase not configured' });
+
+  const jobId = req.body?.job_id;
+  if (typeof jobId !== 'string' || !UUID_RE.test(jobId)) return res.status(400).json({ error: 'job_id が不正です' });
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
+  const { data: job, error } = await supabase
+    .from('ocr_jobs')
+    .select('id, status, image_path')
+    .eq('id', jobId)
+    .single();
+  if (error || !job) return res.status(404).json({ error: 'ジョブが見つかりません' });
+  if (job.status === 'done') return res.status(409).json({ error: 'ジョブは処理済みです' });
+
+  await supabase
+    .from('ocr_jobs')
+    .update({ status: 'processing', error: null, updated_at: new Date().toISOString() })
+    .eq('id', jobId);
+
+  waitUntil(processJob(supabase, apiKey, jobId, job.image_path));
+  res.status(202).json({ job_id: jobId, status: 'processing' });
 }

@@ -27,6 +27,20 @@ export interface OcrResult {
   raw_lines: string[];
 }
 
+export type OcrJobStatus = 'pending' | 'processing' | 'done' | 'error';
+
+export interface OcrJob {
+  id: string;
+  username: string;
+  image_path: string;
+  image_url: string;
+  status: OcrJobStatus;
+  result: OcrResult | null;
+  error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export type Category =
   | '食費'
   | '外食'

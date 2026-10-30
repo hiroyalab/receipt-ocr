@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Plus, X, Save, Check, ChevronDown } from 'lucide-react';
-import { createReceipt, updateReceipt, uploadReceiptImage, getRegistrantUsers } from '../lib/api';
+import { createReceipt, updateReceipt, uploadReceiptImage, getRegistrantUsers, completeOcrJob } from '../lib/api';
 import { getUsername } from '../lib/auth';
 import { CATEGORIES } from '../types';
 import type { OcrResult, Receipt, Category, ReceiptItem } from '../types';
@@ -14,7 +14,7 @@ const h30 = { height: '30px', fontSize: '16px' };
 const inputCls = 'w-full px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 transition';
 const inlineCls = 'w-full px-2 bg-transparent border border-transparent rounded-lg text-sm text-slate-800 focus:bg-slate-50 focus:border-slate-200 focus:outline-none transition';
 
-type OcrState = { mode: 'ocr'; result: OcrResult; file: File | null };
+type OcrState = { mode: 'ocr'; result: OcrResult; file: File | null; imageUrl?: string; jobId?: string };
 type EditState = { mode: 'edit'; receipt: Receipt };
 
 export default function ReceiptConfirmPage() {
@@ -44,9 +44,11 @@ export default function ReceiptConfirmPage() {
   const [saving, setSaving] = useState(false);
 
   const ocrFile = state?.mode === 'ocr' ? state.file : null;
+  const ocrImageUrl = state?.mode === 'ocr' ? state.imageUrl : undefined;
+  const ocrJobId = state?.mode === 'ocr' ? state.jobId : undefined;
   const preview = ocrFile
     ? URL.createObjectURL(ocrFile)
-    : receipt?.image_url ?? null;
+    : ocrImageUrl ?? receipt?.image_url ?? null;
 
   const subtotal = items.reduce((s, i) => s + i.price, 0);
   const total = subtotal + tax;
@@ -70,12 +72,13 @@ export default function ReceiptConfirmPage() {
     try {
       const image_url = ocrFile
         ? await uploadReceiptImage(ocrFile)
-        : receipt?.image_url;
+        : ocrImageUrl ?? receipt?.image_url;
       const body = { username: registrant, store, date, items, tax, category, image_url };
       if (isEdit) {
         await updateReceipt(receipt!.id, body);
       } else {
         await createReceipt(body);
+        if (ocrJobId) await completeOcrJob(ocrJobId);
       }
       navigate('/expenses');
     } finally {
