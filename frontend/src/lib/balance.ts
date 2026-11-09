@@ -8,13 +8,6 @@ export const BASE_MONTH = 11; // 1-12
 /** 月初に入金する人数（毎月の入金額 × この人数を加算） */
 export const CONTRIBUTORS = 2;
 
-export const MONTHLY_DEPOSIT_KEY = 'monthly_deposit';
-
-export function getMonthlyDeposit(): number {
-  const v = Number(localStorage.getItem(MONTHLY_DEPOSIT_KEY) ?? 0);
-  return Number.isFinite(v) && v > 0 ? v : 0;
-}
-
 const pad = (n: number) => String(n).padStart(2, '0');
 const BASE_DATE = `${BASE_YEAR}-${pad(BASE_MONTH)}-01`;
 

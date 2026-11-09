@@ -5,8 +5,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
 import { TrendingUp, TrendingDown, ArrowUpRight, PackageOpen } from 'lucide-react';
-import { getReceipts } from '../lib/api';
-import { calcBalance, getMonthlyDeposit } from '../lib/balance';
+import { getReceipts, getMonthlyDeposit } from '../lib/api';
+import { calcBalance } from '../lib/balance';
 import { CATEGORY_COLORS } from '../types';
 import type { Receipt, Category } from '../types';
 
@@ -41,11 +41,13 @@ function GaugeCircle({ pct }: { pct: number }) {
 
 export default function Dashboard() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [monthlyDeposit, setMonthlyDeposit] = useState(0);
   const now = new Date();
   const budget = Number(localStorage.getItem('monthly_budget') ?? 100000);
 
   useEffect(() => {
     getReceipts().then(setReceipts).catch(console.error);
+    getMonthlyDeposit().then(setMonthlyDeposit).catch(console.error);
   }, []);
 
   const ym = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -61,7 +63,7 @@ export default function Dashboard() {
   const todayTotal = todayR.reduce((s, r) => s + r.total, 0);
   const diff = lastTotal > 0 ? Math.round(((thisTotal - lastTotal) / lastTotal) * 100) : null;
   const budgetPct = budget > 0 ? (thisTotal / budget) * 100 : 0;
-  const bal = useMemo(() => calcBalance(receipts, getMonthlyDeposit()), [receipts]);
+  const bal = useMemo(() => calcBalance(receipts, monthlyDeposit), [receipts, monthlyDeposit]);
 
   const userBreakdown = useMemo(() => {
     const map: Record<string, number> = {};

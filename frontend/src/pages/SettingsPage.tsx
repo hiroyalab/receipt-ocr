@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Check, PiggyBank, Wallet } from 'lucide-react';
-import { MONTHLY_DEPOSIT_KEY, CONTRIBUTORS } from '../lib/balance';
+import { CONTRIBUTORS } from '../lib/balance';
+import { getMonthlyDeposit, saveMonthlyDeposit } from '../lib/api';
 // データ削除機能はオミット
 // import { Trash2 } from 'lucide-react';
 // import { supabase } from '../lib/supabase';
@@ -12,12 +13,27 @@ const inputStyle = { height: '30px', fontSize: '16px' };
 
 export default function SettingsPage() {
   const [budget, setBudget] = useState(() => localStorage.getItem(BUDGET_KEY) ?? '100000');
-  const [deposit, setDeposit] = useState(() => localStorage.getItem(MONTHLY_DEPOSIT_KEY) ?? '0');
+  const [deposit, setDeposit] = useState('');
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const handleSave = () => {
+  useEffect(() => {
+    getMonthlyDeposit()
+      .then((v) => setDeposit(String(v)))
+      .catch((e: Error) => alert(e.message));
+  }, []);
+
+  const handleSave = async () => {
     localStorage.setItem(BUDGET_KEY, budget);
-    localStorage.setItem(MONTHLY_DEPOSIT_KEY, String(Math.max(0, Number(deposit) || 0)));
+    setSaving(true);
+    try {
+      await saveMonthlyDeposit(Number(deposit));
+    } catch (e) {
+      alert((e as Error).message);
+      return;
+    } finally {
+      setSaving(false);
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -51,7 +67,7 @@ export default function SettingsPage() {
             <Wallet size={15} className="text-indigo-500" />
             <h3 className="text-sm font-bold text-slate-800">毎月の入金額（1人あたり）</h3>
           </div>
-          <p className="text-xs text-slate-400 mb-3 ml-[23px]">月初にこの金額 × {CONTRIBUTORS} を残高に加算します</p>
+          <p className="text-xs text-slate-400 mb-3 ml-[23px]">月初にこの金額 × {CONTRIBUTORS} を残高に加算します（全端末で共通）</p>
           <div className="flex items-center gap-2">
             <span className="text-sm text-slate-400 font-medium">¥</span>
             <input type="number" style={inputStyle} className={inputClass} value={deposit} onChange={(e) => setDeposit(e.target.value)} min={0} step={1000} />
@@ -61,6 +77,7 @@ export default function SettingsPage() {
 
       <button
         onClick={handleSave}
+        disabled={saving}
         style={{ height: '30px' }}
         className={`flex items-center gap-2 px-5 rounded-xl text-sm font-semibold transition-all shadow-sm ${
           saved ? 'bg-emerald-500 text-white shadow-emerald-200' : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-200'

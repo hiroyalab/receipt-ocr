@@ -148,6 +148,26 @@ export async function deleteReceipt(id: string): Promise<void> {
   if (error) throw new Error('レシートの削除に失敗しました');
 }
 
+const MONTHLY_DEPOSIT_KEY = 'monthly_deposit';
+
+export async function getMonthlyDeposit(): Promise<number> {
+  const { data, error } = await supabase
+    .from('app_settings')
+    .select('value')
+    .eq('key', MONTHLY_DEPOSIT_KEY)
+    .maybeSingle();
+  if (error) throw new Error('入金額の取得に失敗しました');
+  return data?.value ?? 0;
+}
+
+export async function saveMonthlyDeposit(value: number): Promise<void> {
+  const v = Math.max(0, Math.floor(value) || 0);
+  const { error } = await supabase
+    .from('app_settings')
+    .upsert({ key: MONTHLY_DEPOSIT_KEY, value: v, updated_at: new Date().toISOString() });
+  if (error) throw new Error('入金額の保存に失敗しました');
+}
+
 export function getAllowedUsers(): string[] {
   return (import.meta.env.VITE_ALLOWED_USERS ?? '')
     .split(',')
