@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import { TrendingUp, TrendingDown, ArrowUpRight, PackageOpen } from 'lucide-react';
 import { getReceipts } from '../lib/api';
+import { calcBalance, getMonthlyDeposit } from '../lib/balance';
 import { CATEGORY_COLORS } from '../types';
 import type { Receipt, Category } from '../types';
 
@@ -60,6 +61,7 @@ export default function Dashboard() {
   const todayTotal = todayR.reduce((s, r) => s + r.total, 0);
   const diff = lastTotal > 0 ? Math.round(((thisTotal - lastTotal) / lastTotal) * 100) : null;
   const budgetPct = budget > 0 ? (thisTotal / budget) * 100 : 0;
+  const bal = useMemo(() => calcBalance(receipts, getMonthlyDeposit()), [receipts]);
 
   const userBreakdown = useMemo(() => {
     const map: Record<string, number> = {};
@@ -95,6 +97,19 @@ export default function Dashboard() {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-slate-900">ホーム</h2>
         <span className="text-sm text-slate-400">{now.getFullYear()}年{now.getMonth() + 1}月</span>
+      </div>
+
+      {/* 全体残高 */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">全体残高</p>
+        <p className={`text-3xl font-bold tabular-nums leading-none ${bal.balance < 0 ? 'text-red-500' : 'text-slate-900'}`}>
+          {fmt(bal.balance)}
+        </p>
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400 tabular-nums">
+          <span>ベース {fmt(bal.base)}</span>
+          <span>入金 +{fmt(bal.deposits)}</span>
+          <span>支出 −{fmt(bal.spent)}</span>
+        </div>
       </div>
 
       {/* 1段目: 3カード */}

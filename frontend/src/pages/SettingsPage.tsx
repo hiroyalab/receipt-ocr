@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Check, PiggyBank } from 'lucide-react';
+import { Check, PiggyBank, Wallet } from 'lucide-react';
+import { MONTHLY_DEPOSIT_KEY, CONTRIBUTORS } from '../lib/balance';
 // データ削除機能はオミット
 // import { Trash2 } from 'lucide-react';
 // import { supabase } from '../lib/supabase';
@@ -11,10 +12,12 @@ const inputStyle = { height: '30px', fontSize: '16px' };
 
 export default function SettingsPage() {
   const [budget, setBudget] = useState(() => localStorage.getItem(BUDGET_KEY) ?? '100000');
+  const [deposit, setDeposit] = useState(() => localStorage.getItem(MONTHLY_DEPOSIT_KEY) ?? '0');
   const [saved, setSaved] = useState(false);
 
   const handleSave = () => {
     localStorage.setItem(BUDGET_KEY, budget);
+    localStorage.setItem(MONTHLY_DEPOSIT_KEY, String(Math.max(0, Number(deposit) || 0)));
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -41,6 +44,17 @@ export default function SettingsPage() {
           <div className="flex items-center gap-2">
             <span className="text-sm text-slate-400 font-medium">¥</span>
             <input type="number" style={inputStyle} className={inputClass} value={budget} onChange={(e) => setBudget(e.target.value)} min={0} step={1000} />
+          </div>
+        </div>
+        <div className="p-5">
+          <div className="flex items-center gap-2 mb-1">
+            <Wallet size={15} className="text-indigo-500" />
+            <h3 className="text-sm font-bold text-slate-800">毎月の入金額（1人あたり）</h3>
+          </div>
+          <p className="text-xs text-slate-400 mb-3 ml-[23px]">月初にこの金額 × {CONTRIBUTORS} を残高に加算します</p>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-slate-400 font-medium">¥</span>
+            <input type="number" style={inputStyle} className={inputClass} value={deposit} onChange={(e) => setDeposit(e.target.value)} min={0} step={1000} />
           </div>
         </div>
       </div>
